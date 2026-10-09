@@ -433,42 +433,53 @@ def gumroad_create_draft(store: GoogleStore, config: dict) -> tuple[str, str]:
 
 
 def finalize_existing_draft(store: GoogleStore, row: dict) -> str:
-    """Publish an existing, verified Gumroad draft only when explicitly enabled.
+    """Publish ONLY the existing KGS-003 draft after Gemini's fresh V2 audit.
 
-    A draft MUST be referenced by its actual Gumroad edit URL, never a guessed slug.
+    Its ID and edit URL must match the already verified seller-owned draft.
+    Never create a replacement. This path is not a retry after an API error.
     """
-    require(row.get("Upload Status") == "DRAFT_VERIFIED", "Not a verified draft")
-    require(row.get("QA Verified (YES/NO)") == "YES", "Gemini QA is not YES")
-    require(enabled("GUMROAD_AUTOPUBLISH"), "Gumroad publication not enabled")
+    require(row.get("Upload Status") == "RELEASE_READY",
+            "Existing draft must pass retrospective audit and be RELEASE_READY")
+    parsed = validate_gumroad(row, existing_release=True)
+    verify_qa_report(store, row, "KGS-003")
+    require(enabled("GUMROAD_AUTOPUBLISH"), "Gumroad publication disabled")
     draft_url = str(row.get("Gumroad Live URL", ""))
-    m = re.fullmatch(r"https://gumroad\.com/products/([a-zA-Z0-9_-]+)/edit(?:/content)?/?", draft_url)
-    require(bool(m), "Draft row must contain a verified Gumroad edit URL")
+    m = re.fullmatch(r"https://gumroad\.com/products/([A-Za-z0-9_=-]+)/edit(?:/content)?/?", draft_url)
+    require(bool(m), "KGS-003 draft must retain its genuine Gumroad edit URL")
     product_id = m.group(1)
-    require(product_id != "ovpslk", "Never touch older Gumroad upload-test draft")
-    # Revalidate all creative metadata and check current listing-kit wording.
-    details = validate_gumroad(dict(row, **{"Upload Status": "READY"}))
-    summary, description = get_listing_copy(store.get_doc_text(details["listing_doc"]))
+    require(product_id == "wzlgpm", "KGS-003 existing draft ID mismatch; stop")
+    # Validate source assets and updated listing copy before touching the draft.
+    validate_pdf(store.get_bytes(parsed["pdf"], "application/pdf"))
+    validate_image(store.get_bytes(parsed["cover"], "image/png"))
+    summary, description = get_listing_copy(store.get_doc_text(parsed["listing_doc"]))
     before = gumroad_cli(["products", "view", product_id]).get("product", {})
-    require(bool(before), "Draft not found on Gumroad")
-    require(str(before.get("name", "")).strip() == details["title"], "Draft title mismatch")
-    require(not before.get("published"), "Draft is already published; reconcile")
+    require(bool(before), "KGS-003 draft no longer exists")
+    require(str(before.get("name", "")).strip() == parsed["title"],
+            "KGS-003 title mismatch; do not change another product")
+    require(before.get("published") is False,
+            "KGS-003 already published or publication state uncertain")
+    if before.get("custom_permalink"):
+        require(str(before["custom_permalink"]) == parsed["slug"], "Draft slug mismatch")
     require(bool(before.get("files") or before.get("rich_content_files")),
-            "Cannot independently verify attached product file")
+            "Existing KGS-003 PDF attachment cannot be independently confirmed")
     require(bool(before.get("covers") or before.get("cover_images")),
-            "Cannot independently verify attached cover")
+            "Existing KGS-003 cover attachment cannot be independently confirmed")
+    store.patch("Gumroad Upload Queue", row, {"Upload Status": "UPLOADING",
+                "Last Attempt UTC": make_timestamp(),
+                "Attempt Count": str(int(row.get("Attempt Count") or 0) + 1)})
     args = ["products", "update", product_id, "--description", description]
     if summary:
-        args += ["--custom-summary", summary]
+        args.extend(["--custom-summary", summary])
     gumroad_cli(args)
     gumroad_cli(["products", "publish", product_id])
     after = gumroad_cli(["products", "view", product_id]).get("product", {})
-    require(bool(after.get("published")), "Publish not confirmed; reconcile")
-    live_url = str(after.get("short_url") or "")
-    require(bool(live_url) and urlparse(live_url).scheme == "https", "Published product has no verifiable public URL")
+    require(after.get("published") is True, "KGS-003 publication needs manual reconciliation")
+    url = "https://kindgridstudio.gumroad.com/l/debt-payoff-accelerator"
+    verify_public_product_url(url, "debt-payoff-accelerator")
     store.patch("Gumroad Upload Queue", row, {"Upload Status": "PUBLISHED",
-                "Gumroad Live URL": live_url, "Last Error": "",
+                "Gumroad Live URL": url, "Last Error": "",
                 "Last Updated UTC": make_timestamp()})
-    return f"{details['product_id']}: existing draft published and verified"
+    return "KGS-003: existing corrected draft automatically published and verified"
 
 
 def make_timestamp() -> str:
@@ -654,11 +665,28 @@ def main() -> int:
         verified_drafts = [r for r in gumrows if r.get("Upload Status") == "DRAFT_VERIFIED" and r.get("QA Verified (YES/NO)") == "YES"]
         ready_pin = [r for r in pinrows if r.get("Status") == "READY" and r.get("QA Verified (YES/NO)") == "YES"]
         print(f"Queue: {len(ready_gum)} new products, {len(ready_pin)} Pins")
-        # Never auto-finalize historical DRAFT_VERIFIED items.
+        # Historical drafts cannot be recreated. Only the specifically known
+        # KGS-003 draft may be released automatically *after* Gemini sets
+        # RELEASE_READY with a fresh item-specific QA V2 audit.
         if verified_drafts:
-            print(f"Protected existing Gumroad drafts: {len(verified_drafts)} (not auto-published)")
-        for row in ready_gum[:int(os.getenv("MAX_GUMROAD_PER_RUN", "1"))]:
-            print(process_gumroad(store, row))
+            print(f"Protected historical Gumroad drafts: {len(verified_drafts)}")
+        release_rows = [r for r in gumrows if r.get("Product ID") == "KGS-003"
+                        and r.get("Upload Status") == "RELEASE_READY"]
+        if active and enabled("GUMROAD_AUTOPUBLISH") and release_rows:
+            row = release_rows[0]
+            try:
+                print(finalize_existing_draft(store, row))
+            except ValueError as error:
+                store.patch("Gumroad Upload Queue", row, {
+                    "Upload Status": "NEEDS_FIX", "Last Error": str(error)[:450]})
+                print(f"KGS-003: NEEDS_FIX: {error}")
+            except Exception as error:
+                store.patch("Gumroad Upload Queue", row, {
+                    "Upload Status": "REVIEW", "Last Error": type(error).__name__})
+                print("KGS-003: REVIEW required; do not retry an uncertain release")
+        else:
+            for row in ready_gum[:int(os.getenv("MAX_GUMROAD_PER_RUN", "1"))]:
+                print(process_gumroad(store, row))
         now = datetime.now(timezone.utc)
         for line in monitor_existing_pins(store, pinrows):
             print(line)
