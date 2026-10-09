@@ -1,0 +1,54 @@
+name: KindGrid One-Time Live Grocery Proof
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/oneoff_grocery_live_proof.py"
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  proof:
+    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      KINDGRID_OWNER_AUTHORIZED_ONETIME: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies and one-time design toolkit
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install "reportlab>=4.2,<5"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install previously verified seller CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Run exactly one published Gumroad product and one near-term Pinterest Pin
+        run: python scripts/oneoff_grocery_live_proof.py
+      - name: Preserve proof files and generated product for owner review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kindgrid-onetime-grocery-proof
+          path: |
+            kindgrid-proof-output/*.pdf
+            kindgrid-proof-output/*.png
+            kindgrid-proof-output/*.json
+          if-no-files-found: ignore
+          retention-days: 14
