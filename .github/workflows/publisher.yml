@@ -1,0 +1,57 @@
+name: KindGrid Autopilot (safe handoff)
+on:
+  schedule:
+    - cron: '0 */6 * * *' # UTC 00,06,12,18; 05:30/11:30/17:30/23:30 IST
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview without any external writes (recommended)'
+        required: true
+        type: boolean
+        default: true
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  publisher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      LIVE_MODE: ${{ vars.LIVE_MODE || 'false' }}
+      PIN_AUTOSCHEDULE: ${{ vars.PIN_AUTOSCHEDULE || 'false' }}
+      GUMROAD_CREATE_DRAFTS: ${{ vars.GUMROAD_CREATE_DRAFTS || 'false' }}
+      GUMROAD_AUTOPUBLISH: ${{ vars.GUMROAD_AUTOPUBLISH || 'false' }}
+      MAX_GUMROAD_PER_RUN: '1'
+      MAX_PINS_PER_RUN: '3'
+      PIN_LOOKAHEAD_HOURS: '72'
+      DISPATCH_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - uses: actions/setup-go@v5
+        if: env.LIVE_MODE == 'true' && (env.GUMROAD_CREATE_DRAFTS == 'true' || env.GUMROAD_AUTOPUBLISH == 'true') && env.DISPATCH_DRY_RUN != 'true'
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install pinned Gumroad CLI (only for enabled drafts)
+        if: env.LIVE_MODE == 'true' && (env.GUMROAD_CREATE_DRAFTS == 'true' || env.GUMROAD_AUTOPUBLISH == 'true') && env.DISPATCH_DRY_RUN != 'true'
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Safe publishing pass
+        run: python src/autopilot.py
