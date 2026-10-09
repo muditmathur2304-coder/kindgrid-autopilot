@@ -149,7 +149,9 @@ class PreflightTests(unittest.TestCase):
             process_pins.assert_not_called()
 
     def test_buffer_success_without_id_never_marked_scheduled(self):
-        record = sample["pinterest"][0]
+        # The older sample fixture predates required US-day Time Window.
+        # Make it valid here to test missing Buffer ID rather than slot rejection.
+        record = dict(sample["pinterest"][0], **{"Time Window": "Morning"})
         class FakeStore:
             def __init__(self):
                 self.updates = []
