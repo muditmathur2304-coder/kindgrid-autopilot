@@ -91,6 +91,8 @@ def verify_qa_report(store, row: dict, item_id: str) -> None:
     require(len(report.strip()) >= 350, "QA report must contain substantive inspection evidence")
     require(f"ITEM ID: {item_id.upper()}" in normalized, "QA report item ID mismatch")
     require(f"QA VERSION: {QA_VERSION}" in normalized, "QA version missing from linked report")
+    require("RESULT: FAIL" not in normalized and "CERTIFICATION: REVOKED" not in normalized,
+            "QA report was revoked or contains a failing audit; require fresh report")
     require("RESULT: PASS" in normalized, "QA report has not confirmed PASS")
     for check in QA_FIELDS:
         require(f"{check}: PASS" in normalized, f"QA report missing {check}: PASS")
@@ -456,6 +458,11 @@ def finalize_existing_draft(store: GoogleStore, row: dict) -> str:
     Its ID and edit URL must match the already verified seller-owned draft.
     Never create a replacement. This path is not a retry after an API error.
     """
+    # Gumroad CLI update --file APPENDS embeds, so an old defective PDF
+    # might remain on the customer-download page after an attempted fix.
+    # Historical release is disabled pending proven content replacement.
+    require(False, "KGS-003 historical draft release blocked: replace the existing
+            customer PDF safely before enabling this path")
     require(row.get("Upload Status") == "RELEASE_READY",
             "Existing draft must pass retrospective audit and be RELEASE_READY")
     parsed = validate_gumroad(row, existing_release=True)
