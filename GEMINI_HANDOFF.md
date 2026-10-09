@@ -1,31 +1,48 @@
-# Message to Gemini Spark — publisher agent integration
+# Gemini Spark — KindGrid Studio handoff (current QA-V2 policy)
 
-Continue creating and QA-checking KindGrid Studio products using the existing Drive and dashboard. **The GitHub Actions publisher is configured to run every 6 hours, but requires the owner's final `AUTOPILOT_LIVE_ENABLED=true` repository variable before scheduling or creating drafts.** Once enabled, it may automatically schedule READY Pinterest Pins and create **unpublished new Gumroad drafts**; it NEVER publishes Gumroad products automatically. Manual Github runs are still dry runs. Only platform-confirmed scheduled or published statuses may be reported; the first unattended cron execution has not yet been observed.
+The owner should paste/execute this **single comprehensive master prompt** in Gemini Spark:
+- GitHub: https://github.com/muditmathur2304-coder/kindgrid-autopilot/blob/main/GEMINI_MASTER_PROMPT_QA_V2.md
+- Google Doc: https://docs.google.com/document/d/1BZy_Pkc8QUe0PEnpCNr1B1aYuXa7jdTogHfprWf9lSk/edit
 
-## Handoff requirements
+Do NOT follow old instructions from the previously weekly-only or six-hour, draft-only system if they conflict with this new specification.
 
-- Keep using `Gumroad Upload Queue` and `Publishing Queue`, preserve existing rows and never edit operational status fields while they are `UPLOADING`, `SCHEDULING`, `DRAFT_VERIFIED`, `SCHEDULED_BUFFER`, `PUBLISHED`, `REVIEW`, `LINK_REVIEW` or `BLOCKED_TIME` without explicit reconciliation. KGS-003 is ALREADY `DRAFT_VERIFIED` (do not upload it again). Q-01 is `BLOCKED_TIME` from the native Pinterest scheduler (do not claim it was scheduled).
-- **Permanent protection:** KGS-001, KGS-002, KGS-003, and the one-off technical Gumroad upload-test draft must not be placed into a new `READY` row. New product IDs start at **KGS-004**, with fresh unique slugs and source assets. Never add a Gumroad product to the Pinterest marketing queue until it has a verified *public* product URL; draft edit URLs are NOT marketing destinations.
-- For a Gumroad product, complete columns A–I, including a **unique** product ID and custom slug, price USD, separate genuine Drive PDF/PNG links, and a separate Google Doc that holds ready-to-use product copy. Set H=`YES`, I=`READY` only after full PDF and cover QA.
-- Format the listing Doc so the publisher can extract copy unambiguously:
+## Frequency and ownership
 
-```
-BEGIN_GUMROAD_SUMMARY
-A compelling short summary written by Gemini.
-END_GUMROAD_SUMMARY
-BEGIN_GUMROAD_DESCRIPTION
-The complete final product description, with licensing and financial disclaimers.
-END_GUMROAD_DESCRIPTION
-```
+- GitHub publisher: every 2 hours (UTC even hours; IST odd half-hour). It may publish **new audited Gumroad products without user approval** and schedule approved Pinterest Pins.
+- Gemini Spark: try scheduling independent creative + retrospective QA **every 4 hours, IST 00:45/04:45/08:45/12:45/16:45/20:45**. Schedule MUST actually be created inside Gemini; ChatGPT/GitHub changes do not modify Gemini schedules. Keep Sunday deep quality review.
+- Pinterest times: 08:30 / 14:30 / 20:30 America/New_York, 3 per US calendar day. Q-02 is already scheduled at 14:28 EDT on Oct 12 and must not be resubmitted.
 
-- Do not claim unconditional no-refunds or guaranteed savings. Use accurate product contents, page numbers and licensing.
-- For each Pinterest row, use a real INDIVIDUAL `drive.google.com/file/d/<id>/view` PNG link in column L, put `YES` in column M, and only then set status K to `READY`.
-- Correct US time labels using `America/New_York` for each date. October 12–13 2026 is EDT (UTC-4); daylight saving ends November 1, 2026, after which EST (UTC-5) applies.
-- Never use fake image-hosting URLs from `kindgridstudio.gumroad.com/assets/...`; the publisher hosts only approved promotional graphics when needed.
-- Check `NEEDS_FIX`, `REVIEW` and `LINK_REVIEW` entries on each Gemini review run. Fix only creative/source-file issues. For NEW products, change to `READY` only once the issue is fixed. For a *verified existing Gumroad draft* (like KGS-003), restore `DRAFT_VERIFIED` after fixing its listing copy and preserve its actual Gumroad edit URL; NEVER change it to `READY` because that would request duplicate draft creation. If the error is an API/auth issue, preserve `REVIEW` for human intervention rather than repeatedly recreating assets.
-- Never create duplicate products or Pins, and do not mark `SCHEDULED_BUFFER` as `PUBLISHED`.
-- The editor must not alter the user's Google Sheets operational columns N–R of the Pinterest queue or J–N of the Gumroad queue except to resolve an explicitly documented error after inspecting it.
+## Queue fields that Gemini MUST populate after real checks
 
-## First concrete task
+Both `Publishing Queue` (S:V) and `Gumroad Upload Queue` (O:R) now have:
+- `QA Version` = `KGS-QA-V2`
+- `QA Report Drive Link` = REAL item-specific shared Google Doc URL
+- `QA Audited UTC` = actual current ISO-8601 UTC time
+- `QA Outcome` = `PASS` only with full truthful inspection
 
-KGS-003's current listing kit includes the statement "All sales of digital download files are final." Review that absolute claim and replace it with accurate, legally appropriate wording in Gemini's own copy. Use the BEGIN/END delimiters above and retain all checked product specifications. Keep KGS-003 as `DRAFT_VERIFIED` (its existing Gumroad draft must not be recreated) after the updated copy is fully checked; preserve the verified draft edit URL.
+The linked report must contain ITEM ID, QA VERSION, RESULT, EVIDENCE, and eight separate PASS audit fields: ASSET_OPEN, VISUAL, CONTENT, COPY, LINKS, LICENSE, FACTS, PRODUCT_MATCH. Every PASS must be backed by true evidence. Broken links, blank PDF pages, incorrect page counts, untested sums, clipping, copyright/licensing defects, generic/spam Pins, unverified savings promises or misrepresented digital capabilities mean FAIL / NEEDS_FIX, not READY.
+
+GitHub additionally checks QA freshness (14 days), PDF US Letter page sizes and nonblank content streams, 2:3 image aspect, listing copy, real public Gumroad URLs and Buffer slot/queue uniqueness. If Gemini's report is fake, those machine checks alone may not catch every content defect; Gemini must actually examine every page and link.
+
+## Retrospective priorities
+
+1. Published KGS-001 and KGS-002: inspect actual downloads, live pages and matching copy; protect their identities and don't overwrite without issue review.
+2. KGS-003: correct exaggerated 'automated rollover/calculator' and overbroad refunds text in source listing. Audit original 8-page printable and existing unpublished draft. Do not recreate it or reset to READY. Only when perfect, attach QA V2 and set status RELEASE_READY preserving URL https://gumroad.com/products/wzlgpm/edit; GitHub can then publish that particular existing draft without a new manual approval.
+3. Q-01 historically BLOCKED_TIME, but its source now uses 08:30 EDT. Recheck QA and only then mark READY and clear resolved timing error.
+4. Q-02 already SCHEDULED_BUFFER and verified link: do not reschedule/duplicate.
+5. Q-03..Q-06 have loose images but lack V2 certification; audit each image, source link and copy before READY.
+6. Q-07..Q-42 have no single loose image links in the source queue. Extract, independently upload/share each genuine image and audit individually. Never use ZIP-only link/imaginary endpoints.
+7. All previous products, covers, bulk schedule URLs, PDF claims, date conversions and Drive links must be independently rechecked; old Gemini DONE messages are not evidence.
+
+## Future workflow
+
+New products start at KGS-004, with absolutely unique source PDF/PNG/Google Doc/slug and complete QA report. Target one genuinely original fully verified product per day, more only when work meets standards; two-hour GitHub runs check the queue, they do not force Gemini to ship every two hours. Prepare three distinct Pins/day with correct published Gumroad destinations and NY/DST times.
+
+Gumroad READY + QA Verified YES + QA V2 PASS -> GitHub creates draft, verifies, publishes and confirms actual public URL automatically. The publisher does not ask for human approval on these routine qualified releases.
+
+Pinterest READY + QA Verified YES + QA V2 PASS + a real loose image + live Gumroad product destination -> GitHub hosts the image on Cloudinary, schedules via Buffer, checks link/board and records SCHEDULED_BUFFER. Do not claim Pinterest PUBLISHED until Buffer delivers a live Pinterest URL.
+
+Creative errors -> Gemini repairs and re-audits; uncertain API/platform errors -> leave REVIEW or LINK_REVIEW for human reconciliation, never retry blindly.
+
+For detailed timing and owner stop switch, see:
+https://github.com/muditmathur2304-coder/kindgrid-autopilot/blob/main/OPERATIONS_STATUS.md
