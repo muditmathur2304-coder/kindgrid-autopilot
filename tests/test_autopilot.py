@@ -290,6 +290,23 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(any("time window already" in x for x in messages))
         client.assert_not_called()
 
+    def test_revoked_qa_document_never_passes_even_with_pass_labels(self):
+        class ReissuedButRevoked:
+            def get_doc_text(self, document_id):
+                headings = ["ITEM ID: Q-03", "QA VERSION: KGS-QA-V2",
+                            "RESULT: PASS", "EVIDENCE: image opened and arithmetic checked"]
+                headings.extend(check + ': PASS' for check in a.QA_FIELDS)
+                headings.append("RESULT: FAIL")
+                headings.append("QA RELEASE CERTIFICATION: REVOKED")
+                return "\n".join(headings) + (" Further original inspection evidence." * 12)
+        row = dict(sample["pinterest"][0], **{"Queue ID": "Q-03"})
+        with self.assertRaisesRegex(ValueError, "revoked"):
+            a.verify_qa_report(ReissuedButRevoked(), row, "Q-03")
+
+    def test_existing_gumroad_draft_cannot_publish_without_safe_file_replacement(self):
+        with self.assertRaisesRegex(ValueError, "historical draft release blocked"):
+            a.finalize_existing_draft(object(), {"Upload Status": "RELEASE_READY"})
+
     def test_qa_document_pass_is_item_specific(self):
         class VerifiedReport:
             def get_doc_text(self, document_id):
