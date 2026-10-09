@@ -202,7 +202,7 @@ class GoogleStore:
     def get_rows(self, sheet_name: str) -> list[dict]:
         import urllib.parse
         escaped = sheet_name.replace("'", "''")
-        result = self.sheet.spreadsheets().values().get(spreadsheetId=SHEET_ID, range=f"'{escaped}'!A1:U1000").execute()
+        result = self.sheet.spreadsheets().values().get(spreadsheetId=SHEET_ID, range=f"'{escaped}'!A1:Z1000").execute()
         values = result.get("values", [])
         if not values:
             return []
