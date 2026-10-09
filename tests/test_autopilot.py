@@ -13,7 +13,7 @@ sample = json.loads((ROOT / "sample_queue.json").read_text())
 
 
 class PreflightTests(unittest.TestCase):
-    def test_gumroad_003_is_ready(self):
+    def test_new_gumroad_004_is_ready(self):
         ready_new = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "new-budget-reflection-kit"})
         g = a.validate_gumroad(ready_new)
         self.assertEqual(g["slug"], "new-budget-reflection-kit")
@@ -166,6 +166,7 @@ class PreflightTests(unittest.TestCase):
         self.assertIn("GUMROAD_AUTOPUBLISH: 'false'", workflow)
         self.assertIn("github.event_name == 'schedule'", workflow)
         self.assertIn("AUTOPILOT_PAUSED", workflow)
+        self.assertIn("AUTOPILOT_LIVE_ENABLED == 'true'", workflow)
         self.assertIn("needs_cli == 'true'", workflow)
 
 
