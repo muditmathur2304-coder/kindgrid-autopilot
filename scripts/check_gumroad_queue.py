@@ -26,14 +26,22 @@ def main():
                 except ValueError:
                     # Main publisher will set NEEDS_FIX for invalid READY rows.
                     pass
-        requires_cli = bool(valid)
+        audited_existing = []
+        for row in rows:
+            if row.get("Product ID") == "KGS-003" and row.get("Upload Status") == "RELEASE_READY":
+                try:
+                    audited_existing.append(validate_gumroad(row, existing_release=True))
+                except ValueError:
+                    # Publisher will record the missing/expired audit as NEEDS_FIX.
+                    pass
+        requires_cli = bool(valid or audited_existing)
         output_path = os.getenv("GITHUB_OUTPUT")
         if not output_path:
             print("PREFLIGHT_BLOCKED: GitHub output path unavailable.")
             return 1
         with open(output_path, "a", encoding="utf-8") as output:
             output.write(f"needs_cli={'true' if requires_cli else 'false'}\n")
-        print(f"NEW_DRAFT_PREFLIGHT: {len(valid)} eligible new product(s).")
+        print(f"NEW_DRAFT_PREFLIGHT: {len(valid)} eligible new product(s); {len(audited_existing)} audited existing draft release(s).")
         print("GUMROAD_CLI_REQUIRED: " + ("YES" if requires_cli else "NO (skip Go installation)."))
         return 0
     except Exception as error:
