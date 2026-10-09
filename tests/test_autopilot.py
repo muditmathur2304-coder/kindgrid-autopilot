@@ -153,6 +153,8 @@ class PreflightTests(unittest.TestCase):
         class FakeStore:
             def __init__(self):
                 self.updates = []
+            def get_rows(self, sheet_name):
+                return []
             def patch(self, sheet_name, row, fields):
                 self.updates.append(fields)
             def get_bytes(self, file_id, media_type):
@@ -250,6 +252,41 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(store.updates[-1]["Upload Status"], "PUBLISHED")
         self.assertEqual(store.updates[-1]["Gumroad Live URL"],
                          "https://kindgridstudio.gumroad.com/l/unique-original-budget-planner")
+
+    def test_existing_kgs003_requires_exact_release_ready_and_qa(self):
+        row = dict(sample["gumroad"], **{
+            "Product ID": "KGS-003",
+            "Unique Slug": "debt-payoff-accelerator",
+            "Upload Status": "DRAFT_VERIFIED"})
+        with self.assertRaisesRegex(ValueError, "Not ready"):
+            a.validate_gumroad(row, existing_release=True)
+        row["Upload Status"] = "RELEASE_READY"
+        config = a.validate_gumroad(row, existing_release=True)
+        self.assertEqual(config["product_id"], "KGS-003")
+        row["Product ID"] = "KGS-005"
+        with self.assertRaisesRegex(ValueError, "KGS-003"):
+            a.validate_gumroad(row, existing_release=True)
+
+    def test_pin_daily_cap_blocks_duplicate_slots(self):
+        record = dict(sample["pinterest"][0], **{
+            "Queue ID": "Q-88", "Status": "READY",
+            "Scheduled Date": "2026-10-12",
+            "Time Window": "Morning"})
+        class FakeStore:
+            def __init__(self):
+                self.updates = []
+            def get_rows(self, sheet_name):
+                return [{"Queue ID": "Q-01", "Status": "SCHEDULED_BUFFER",
+                         "Scheduled Date": "2026-10-12", "Time Window": "Morning"}]
+            def patch(self, sheet_name, row, values):
+                self.updates.append(values)
+        store = FakeStore()
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true"}), \
+             patch.object(a, "verify_qa_report", return_value=None), \
+             patch.object(a, "BufferClient") as client:
+            messages = a.process_pins(store, [record], datetime(2026, 10, 10, tzinfo=timezone.utc))
+        self.assertTrue(any("time window already" in x for x in messages))
+        client.assert_not_called()
 
     def test_scheduled_workflow_forbids_gumroad_publication_and_manual_live(self):
         workflow = (ROOT / ".github/workflows/publisher.yml").read_text()
