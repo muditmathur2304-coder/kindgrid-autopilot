@@ -2,7 +2,7 @@
 
 **Purpose:** Gemini Spark prepares PDFs, product covers and Pinterest images, and records `READY` rows in the existing KindGrid Studio Google Sheets dashboard. A scheduled GitHub Actions workflow checks those rows **every 6 hours** and (only after credentials/permissions and a pilot are validated) performs the repetitive publishing work. It never generates or rewrites creative assets.
 
-> **CURRENT STATE:** Not deployed, not connected to the user's third-party accounts and **not publishing live**. This repository intentionally defaults to `LIVE_MODE=false`. The project includes working queue validation and guarded connectors, but its Gumroad and Pinterest integrations **have not been tested against the user's live accounts**. Do not switch on automatic publishing based only on offline tests.
+> **CURRENT STATE (2026-10-09):** Deployed to a private GitHub repository. Google/Buffer/Cloudinary/Gumroad credentials were verified. A single Pinterest Pin was scheduled through GitHub and its Gumroad destination confirmed; a separate unpublished Gumroad draft was created with both attachments and visually verified by the owner. The 6-hour schedule is now **configured for actual operation**, but the first unattended scheduled run has NOT yet been observed. Scheduled runs can schedule approved Pinterest Pins and create *new unpublished* Gumroad drafts only. **Gumroad live publication is hard-locked off.** See [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md) for the current runbook and pause switch.
 
 Dashboard: https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit
 
@@ -68,20 +68,24 @@ base64 -i /secure/path/service-account.json | tr -d '\n'  # macOS
 - Place a seller token in GitHub Secrets as `GUMROAD_ACCESS_TOKEN`. Do not copy any admin token into that field. The token grants sensitive seller capabilities: guard it and revoke it if exposed.
 - **SAFETY:** Do not remove `--draft` from the create command: Gumroad CLI v0.20261002.0 makes new products public by default. The GitHub workflow installs a pinned Gumroad CLI release (`v0.20261002.0`) only when draft upload is explicitly enabled. The underlying CLI may change; test it against an unpublished draft before live publication.
 
-### F. Activation gates — **keep all off initially**
+### F. Activation gates — CURRENT SETTINGS
 
-In repository **Settings → Secrets and variables → Actions → Variables**:
+In `.github/workflows/publisher.yml`, only **scheduled** (cron) runs can be live when not paused. Manually dispatched runs remain read-only.
 
-| Variable | Safe starting value | Effect |
+| Setting | Recurring workflow | Effect |
 |---|---|---|
-| `LIVE_MODE` | `false` | No external writes at all |
-| `GUMROAD_CREATE_DRAFTS` | `false` | Allows creating Gumroad drafts when also in live mode |
-| `GUMROAD_AUTOPUBLISH` | `false` | Separately enables live Gumroad publication; only turn on after verified draft pilot |
-| `PIN_AUTOSCHEDULE` | `false` | Enables real Buffer post creation; **must test destination URL retention first** |
+| `LIVE_MODE` | true on schedule | Enables the queue processor |
+| `PIN_AUTOSCHEDULE` | true on schedule | Up to 3 approved Pins/run within Buffer queue limits |
+| `GUMROAD_CREATE_DRAFTS` | true on schedule | Up to 1 **new unpublished** product draft/run |
+| `GUMROAD_AUTOPUBLISH` | **false, hard-locked** | Cannot publish Gumroad products on schedule |
+| `AUTOPILOT_PAUSED` repository variable | absent/false | Set to `true` to pause ALL scheduled external writes |
 
-The `workflow_dispatch` screen has a `dry_run` checkbox, default **true**. Turn it off *only for an explicitly approved test* after credentials work and variables are set correctly.
+The `workflow_dispatch` screen is for safe previews. Refer to [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md), not the outdated pilot instructions below, for actual operation.
 
-## Pilot test sequence
+## Previously completed pilot test sequence (historical)
+
+The numbered guidance below records how the integrations were tested during initial setup. **It is not a request to repeat completed tests or change the active safety gates.** For current run status, see [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md).
+
 
 1. Run Actions → KindGrid Autopilot → **Run workflow** with `dry_run=true`: expect only queue summaries. As of the latest dashboard check on October 9, **KGS-003 is already `DRAFT_VERIFIED`**, **Q-01 is `BLOCKED_TIME`**, and **Q-02 through Q-06 are `READY`**. The included `sample_queue.json` demonstrates the original pre-test `READY` format; it is **not a current status export**.
 2. Ensure Gemini has corrected KGS-003's listing description if it contains an unconditional “All sales of digital download files are final” claim. The starter deliberately marks this as `NEEDS_FIX` rather than silently altering Gemini's creative copy.
@@ -118,4 +122,4 @@ The `workflow_dispatch` screen has a `dry_run` checkbox, default **true**. Turn 
 - `.env.example`: required environment variable names without credentials
 - `GEMINI_HANDOFF.md`: instructions for Spark's queue writer and error-correction loop
 
-**Known limitation:** this is a **starter integration**, not a demonstrated fully autonomous production system. Its account-specific calls must be pilot-tested first. Specifically, the Buffer Pinterest destination-link behavior may require a different publisher.
+**Known limitation:** The one-time live publishing pilots succeeded, but unattended cron delivery remains unproven until a scheduled run completes. Gemini Spark must maintain the upstream queue independently; errors that are ambiguous or security-related still require human review. Platform limits, uptime, and final Pinterest publication are not guaranteed.
