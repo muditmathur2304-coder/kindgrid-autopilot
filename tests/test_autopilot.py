@@ -113,5 +113,61 @@ class PreflightTests(unittest.TestCase):
             a.get_listing_copy(text)
 
 
+    def test_existing_uncertain_pin_blocks_all_future_scheduled_pins(self):
+        class FakeStore:
+            def get_rows(self, sheet_name):
+                if sheet_name == "Gumroad Upload Queue":
+                    return []
+                return [
+                    {"Queue ID": "Q-77", "Status": "LINK_REVIEW"},
+                    {"Queue ID": "Q-78", "Status": "READY",
+                     "QA Verified (YES/NO)": "YES"},
+                ]
+        env = {"GOOGLE_SERVICE_ACCOUNT_JSON_B64": "test-placeholder",
+               "LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true",
+               "GUMROAD_CREATE_DRAFTS": "false",
+               "GUMROAD_AUTOPUBLISH": "false",
+               "DISPATCH_DRY_RUN": "false"}
+        with patch.dict(a.os.environ, env), \
+             patch.object(a, "GoogleStore", return_value=FakeStore()), \
+             patch.object(a, "monitor_existing_pins", return_value=[]), \
+             patch.object(a, "process_pins") as process_pins:
+            self.assertEqual(a.main(), 0)
+            process_pins.assert_not_called()
+
+    def test_buffer_success_without_id_never_marked_scheduled(self):
+        record = sample["pinterest"][0]
+        class FakeStore:
+            def __init__(self):
+                self.updates = []
+            def patch(self, sheet_name, row, fields):
+                self.updates.append(fields)
+            def get_bytes(self, file_id, media_type):
+                return b"test-image"
+        class FakeBuffer:
+            def boards(self):
+                return {record["Target Board"]: "board123"}
+            def scheduled(self):
+                return 0
+            def create(self, pin, image_url, board_id):
+                return {"metadata": {"url": pin["destination"]}}
+        store = FakeStore()
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true"}), \
+             patch.object(a, "BufferClient", return_value=FakeBuffer()), \
+             patch.object(a, "validate_image", return_value=(1000, 1500)), \
+             patch.object(a, "cloudinary_upload", return_value="https://res.cloudinary.com/sample/image"):
+            messages = a.process_pins(store, [record], datetime(2026, 10, 10, tzinfo=timezone.utc))
+        self.assertTrue(any("LINK_REVIEW" in m for m in messages))
+        self.assertEqual(store.updates[-1]["Status"], "LINK_REVIEW")
+        self.assertFalse(any(u["Status"] == "SCHEDULED_BUFFER" for u in store.updates))
+
+    def test_scheduled_workflow_forbids_gumroad_publication_and_manual_live(self):
+        workflow = (ROOT / ".github/workflows/publisher.yml").read_text()
+        self.assertIn("GUMROAD_AUTOPUBLISH: 'false'", workflow)
+        self.assertIn("github.event_name == 'schedule'", workflow)
+        self.assertIn("AUTOPILOT_PAUSED", workflow)
+        self.assertIn("needs_cli == 'true'", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
