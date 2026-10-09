@@ -353,6 +353,14 @@ Digital file only; no physical item is shipped. Personal-use licence only: do no
 
 
 if __name__=="__main__":
+    if "--prepare-only" in sys.argv:
+        try:
+            prepare_assets()
+            print("READ_ONLY_PREVIEW_SUCCESS: no Gumroad or Pinterest API calls made")
+            sys.exit(0)
+        except Exception as exc:
+            print("READ_ONLY_PREVIEW_FAILED: " + type(exc).__name__ + ": " + str(exc))
+            sys.exit(1)
     try:
         sys.exit(submit())
     except Exception as e:
