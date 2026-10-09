@@ -1,9 +1,6 @@
 name: KindGrid One-Time Live Grocery Proof
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/oneoff_grocery_live_proof.py"
+  workflow_dispatch: # ARCHIVED PROOF ONLY; production publisher is separate
 permissions:
   contents: read
 concurrency:
@@ -11,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   proof:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # Owner-authorized one-time live proof completed; do not rerun.
     runs-on: ubuntu-latest
     timeout-minutes: 14
     env:
