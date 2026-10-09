@@ -179,6 +179,12 @@ def get_listing_copy(text: str) -> tuple[str, str]:
     require(len(description) <= 10000, "Listing description unusually long")
     require(not re.search(r"\ball sales.{0,40}final\b", description, re.I),
             "Gemini must review absolute 'all sales final' language before publication")
+    require(not re.search(r"\b(?:lorem ipsum|todo|tbd|paste here|your link|"
+                          r"your product name|placeholder text)\b", description, re.I),
+            "Customer-facing listing contains placeholder or unfinished content")
+    require(not re.search(r"\bautomated\s+(?:rollover|calculator|calculation|compounding)\b",
+                          description, re.I),
+            "Listing claims automated calculation; verify that a static printable actually does this")
     return summary[:400], description
 
 
@@ -271,6 +277,16 @@ def validate_pdf(data: bytes) -> int:
     require(data.startswith(b"%PDF-"), "File is not a real PDF")
     pdf = PdfReader(io.BytesIO(data), strict=False)
     require(1 <= len(pdf.pages) <= 300, "Unexpected PDF page count")
+    for index, page in enumerate(pdf.pages, start=1):
+        width = float(page.mediabox.width)
+        height = float(page.mediabox.height)
+        require(abs(width - 612) <= 3 and abs(height - 792) <= 3,
+                f"PDF page {index} is not US Letter portrait size")
+        contents = page.get_contents()
+        require(contents is not None,
+                f"PDF page {index} appears blank (missing content stream)")
+        require(len(contents.get_data()) >= 40,
+                f"PDF page {index} appears blank or has a truncated content stream")
     return len(pdf.pages)
 
 
@@ -282,6 +298,8 @@ def validate_image(data: bytes) -> tuple[int, int]:
         width, height = im.size
         require(im.format in {"PNG", "JPEG"}, "Only PNG and JPG assets accepted")
         require(width >= 600 and height >= 600, "Image resolution too low")
+        require(0.64 <= width / height <= 0.69,
+                "Image/cover aspect ratio must be approximately 2:3 vertical")
         return width, height
 
 
