@@ -97,18 +97,26 @@ def verify_qa_report(store, row: dict, item_id: str) -> None:
     require("EVIDENCE:" in normalized, "QA report lacks documented inspection evidence")
 
 
-def validate_gumroad(row: dict) -> dict:
+def validate_gumroad(row: dict, *, existing_release: bool = False) -> dict:
     require(str(row.get("QA Verified (YES/NO)", "")).upper() == "YES", "Gemini QA not approved")
     validate_qa_metadata(row)
-    require(row.get("Upload Status") == "READY", "Not ready for Gumroad")
+    required_status = "RELEASE_READY" if existing_release else "READY"
+    require(row.get("Upload Status") == required_status, "Not ready for Gumroad")
     product_id = str(row.get("Product ID", "")).strip()
     require(re.fullmatch(r"KGS-\d{3,}", product_id) is not None, "Invalid product ID")
-    require(product_id not in EXISTING_PRODUCTS, "Existing published product must not be recreated")
+    if existing_release:
+        require(product_id == "KGS-003", "Only the known KGS-003 draft can use historical release")
+    else:
+        require(product_id not in EXISTING_PRODUCTS,
+                "Existing product or draft must not be recreated")
     title = str(row.get("Product Name", "")).strip()
     require(len(title) >= 12, "Product title absent/too short")
     slug = str(row.get("Unique Slug", "")).strip()
     require(re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug) is not None, "Invalid slug")
-    require(slug not in EXISTING_GUMROAD_SLUGS, "Existing Gumroad slug")
+    if existing_release:
+        require(slug == "debt-payoff-accelerator", "Known KGS-003 draft slug mismatch")
+    else:
+        require(slug not in EXISTING_GUMROAD_SLUGS, "Existing Gumroad slug")
     try:
         price = Decimal(str(row.get("Price USD", "")))
         require(Decimal("0.50") <= price <= Decimal("100.00"), "Price out of configured guardrails")
