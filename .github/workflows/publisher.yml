@@ -49,6 +49,9 @@ jobs:
       - name: Verify Cloudinary connection (read only)
         if: github.event_name == 'workflow_dispatch'
         run: python scripts/check_cloudinary_connection.py
+      - name: Verify Pinterest board and queue API (read only)
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/check_pinterest_preflight.py
       - uses: actions/setup-go@v5
         if: env.LIVE_MODE == 'true' && (env.GUMROAD_CREATE_DRAFTS == 'true' || env.GUMROAD_AUTOPUBLISH == 'true') && env.DISPATCH_DRY_RUN != 'true'
         with:
