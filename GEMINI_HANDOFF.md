@@ -27,7 +27,7 @@ GitHub additionally checks QA freshness (14 days), PDF US Letter page sizes and 
 ## Retrospective priorities
 
 1. Published KGS-001 and KGS-002: inspect actual downloads, live pages and matching copy; protect their identities and don't overwrite without issue review.
-2. KGS-003: correct exaggerated 'automated rollover/calculator' and overbroad refunds text in source listing. Audit original 8-page printable and existing unpublished draft. Do not recreate it or reset to READY. Only when perfect, attach QA V2 and set status RELEASE_READY preserving URL https://gumroad.com/products/wzlgpm/edit; GitHub can then publish that particular existing draft without a new manual approval.
+2. KGS-003: correct exaggerated 'automated rollover/calculator' and overbroad refunds text in source listing. Audit original 8-page printable and existing unpublished draft. Do not recreate it or reset to READY. CURRENT OVERRIDE: Keep KGS-003 at DRAFT_VERIFIED, QA Verified RECHECK_REQUIRED and QA Outcome FAIL. The customer-delivered PDF itself has wrong snowball ranking, impossible example payoff date, unsupported interest savings and inaccurate debt-free labeling. Regenerate and verify the source plus replace the existing Gumroad downloadable file (not append it); the historical automatic release path is disabled until a safe replacement routine has been tested. Do NOT mark RELEASE_READY yet.
 3. Q-01 historically BLOCKED_TIME, but its source now uses 08:30 EDT. Recheck QA and only then mark READY and clear resolved timing error.
 4. Q-02 already SCHEDULED_BUFFER and verified link: do not reschedule/duplicate.
 5. Q-03..Q-06 have loose images but lack V2 certification; audit each image, source link and copy before READY.
