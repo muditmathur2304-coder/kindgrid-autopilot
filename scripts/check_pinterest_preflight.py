@@ -25,6 +25,7 @@ def main():
 
     print(f"PINTEREST_QUEUE_READ_OK: {scheduled} queued posts.")
     print("PINTEREST_BOARDS_READ_OK: Buffer returned board information.")
+    print("PINTEREST_BOARDS_VISIBLE: " + " | ".join(sorted(boards.keys())))
     missing = sorted(EXPECTED.difference(boards))
     if missing:
         print("PINTEREST_BOARD_MISSING: " + ", ".join(missing))
