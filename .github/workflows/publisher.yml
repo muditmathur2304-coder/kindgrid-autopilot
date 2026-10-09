@@ -1,4 +1,4 @@
-name: KindGrid Autopilot (safe handoff)
+name: KindGrid Autopilot (6-hour scheduled publisher)
 on:
   schedule:
     - cron: '0 */6 * * *' # UTC 00,06,12,18; 05:30/11:30/17:30/23:30 IST
@@ -25,10 +25,10 @@ jobs:
       BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
       CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
       GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
-      LIVE_MODE: ${{ vars.LIVE_MODE || 'false' }}
-      PIN_AUTOSCHEDULE: ${{ vars.PIN_AUTOSCHEDULE || 'false' }}
-      GUMROAD_CREATE_DRAFTS: ${{ vars.GUMROAD_CREATE_DRAFTS || 'false' }}
-      GUMROAD_AUTOPUBLISH: ${{ vars.GUMROAD_AUTOPUBLISH || 'false' }}
+      LIVE_MODE: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      PIN_AUTOSCHEDULE: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      GUMROAD_CREATE_DRAFTS: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      GUMROAD_AUTOPUBLISH: 'false' # hard-locked; do not publish Gumroad automatically
       MAX_GUMROAD_PER_RUN: '1'
       MAX_PINS_PER_RUN: '3'
       PIN_LOOKAHEAD_HOURS: '72'
@@ -55,13 +55,17 @@ jobs:
       - name: Verify Gumroad seller token and store (read only)
         if: github.event_name == 'workflow_dispatch' && env.GUMROAD_ACCESS_TOKEN != ''
         run: python scripts/check_gumroad_connection.py
+      - name: Detect eligible new Gumroad drafts (read only)
+        id: gumroad_queue
+        if: env.LIVE_MODE == 'true' && env.GUMROAD_CREATE_DRAFTS == 'true' && env.DISPATCH_DRY_RUN != 'true'
+        run: python scripts/check_gumroad_queue.py
       - uses: actions/setup-go@v5
-        if: env.LIVE_MODE == 'true' && (env.GUMROAD_CREATE_DRAFTS == 'true' || env.GUMROAD_AUTOPUBLISH == 'true') && env.DISPATCH_DRY_RUN != 'true'
+        if: steps.gumroad_queue.outputs.needs_cli == 'true'
         with:
           go-version: '1.25.4'
           cache: false
-      - name: Install pinned Gumroad CLI (only for enabled drafts)
-        if: env.LIVE_MODE == 'true' && (env.GUMROAD_CREATE_DRAFTS == 'true' || env.GUMROAD_AUTOPUBLISH == 'true') && env.DISPATCH_DRY_RUN != 'true'
+      - name: Install pinned Gumroad CLI (only when new draft is READY)
+        if: steps.gumroad_queue.outputs.needs_cli == 'true'
         run: |
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
