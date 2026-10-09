@@ -506,12 +506,16 @@ def make_timestamp() -> str:
 
 def process_gumroad(store: GoogleStore, row: dict) -> str:
     marker = make_timestamp()
+    attempted_write = False
     try:
         parsed = validate_gumroad(row)
         if enabled("LIVE_MODE"):
             verify_qa_report(store, row, parsed["product_id"])
         if not enabled("LIVE_MODE") or not enabled("GUMROAD_CREATE_DRAFTS"):
             return f"{parsed['product_id']}: validated metadata; dry run; no product created"
+        # From here onward Gumroad may be changed. Any error must be treated
+        # as an uncertain state, not as permission to start a fresh upload.
+        attempted_write = True
         store.patch("Gumroad Upload Queue", row, {"Upload Status": "UPLOADING",
                     "Last Attempt UTC": marker,
                     "Attempt Count": str(int(row.get("Attempt Count") or 0) + 1)})
@@ -539,9 +543,10 @@ def process_gumroad(store: GoogleStore, row: dict) -> str:
             return f"{parsed['product_id']}: auto-published and verified ({product_id})"
         return f"{parsed['product_id']}: draft verified ({product_id}), NOT published"
     except ValueError as error:
+        state = "REVIEW" if attempted_write else "NEEDS_FIX"
         if enabled("LIVE_MODE"):
-            store.patch("Gumroad Upload Queue", row, {"Upload Status": "NEEDS_FIX", "Last Error": str(error)[:450]})
-        return f"{row.get('Product ID')}: NEEDS_FIX: {error}"
+            store.patch("Gumroad Upload Queue", row, {"Upload Status": state, "Last Error": str(error)[:450]})
+        return f"{row.get('Product ID')}: {state}: {error}"
     except Exception as error:
         if enabled("LIVE_MODE"):
             store.patch("Gumroad Upload Queue", row, {"Upload Status": "REVIEW", "Last Error": str(error)[:450]})
