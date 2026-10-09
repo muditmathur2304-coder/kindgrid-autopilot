@@ -1,0 +1,26 @@
+name: KindGrid Grocery Assets Preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/oneoff_grocery_source_preview.py
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install asset renderer
+        run: python -m pip install "reportlab>=4.2,<5" "Pillow>=11,<13" "pypdf>=5,<8"
+      - name: Render and inspect complete product asset set
+        run: python scripts/oneoff_grocery_source_preview.py --prepare-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kindgrid-grocery-preview
+          path: kindgrid-proof-output/
+          retention-days: 7
