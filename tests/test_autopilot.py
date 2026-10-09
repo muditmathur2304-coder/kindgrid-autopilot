@@ -14,8 +14,9 @@ sample = json.loads((ROOT / "sample_queue.json").read_text())
 
 class PreflightTests(unittest.TestCase):
     def test_gumroad_003_is_ready(self):
-        g = a.validate_gumroad(sample["gumroad"])
-        self.assertEqual(g["slug"], "debt-payoff-accelerator")
+        ready_new = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "new-budget-reflection-kit"})
+        g = a.validate_gumroad(ready_new)
+        self.assertEqual(g["slug"], "new-budget-reflection-kit")
         self.assertEqual(g["price"], "5")
         self.assertEqual(g["pdf"], "1rHxf3w8vAhHvE9pkJnucnBBxeiU9qEKc")
 
@@ -51,15 +52,21 @@ class PreflightTests(unittest.TestCase):
         self.assertIn("--all", next(cmd for cmd in calls if cmd[:2] == ["products", "list"]))
 
     def test_existing_gumroad_products_never_reuploaded(self):
-        g = dict(sample["gumroad"], **{"Product ID": "KGS-001"})
+        for protected in ("KGS-001", "KGS-002", "KGS-003"):
+            g = dict(sample["gumroad"], **{"Product ID": protected})
+            with self.subTest(protected=protected), self.assertRaises(ValueError):
+                a.validate_gumroad(g)
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "ultimate-budget-planner"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
-        g = dict(sample["gumroad"], **{"Unique Slug": "ultimate-budget-planner"})
+
+    def test_protected_test_slug_is_rejected(self):
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "kindgrid-autopilot-upload-test-20261009"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
 
     def test_bad_drive_links_rejected(self):
-        g = dict(sample["gumroad"], **{"PDF Drive Link": "https://example.com/file.pdf"})
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "new-budget-worksheet", "PDF Drive Link": "https://example.com/file.pdf"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
 
