@@ -288,6 +288,61 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(any("time window already" in x for x in messages))
         client.assert_not_called()
 
+    def test_qa_document_pass_is_item_specific(self):
+        class VerifiedReport:
+            def get_doc_text(self, document_id):
+                fields = [
+                    "ITEM ID: KGS-004", "QA VERSION: KGS-QA-V2",
+                    "RESULT: PASS", "ASSET_OPEN: PASS", "VISUAL: PASS",
+                    "CONTENT: PASS", "COPY: PASS", "LINKS: PASS",
+                    "LICENSE: PASS", "FACTS: PASS", "PRODUCT_MATCH: PASS",
+                    "EVIDENCE: Independently checked each printable page in full "
+                    "and checked the item against its final listing and media. "
+                    "Each destination was opened from a public browser, all sums "
+                    "were recalculated, and digital product licence claims were "
+                    "checked against the actual template deliverables. " * 3,
+                ]
+                return "\n".join(fields)
+        row = dict(sample["gumroad"], **{"Product ID": "KGS-004",
+                                             "Unique Slug": "new-debt-planner-v2"})
+        a.verify_qa_report(VerifiedReport(), row, "KGS-004")
+        with self.assertRaisesRegex(ValueError, "item ID"):
+            a.verify_qa_report(VerifiedReport(), row, "KGS-009")
+
+    def test_false_automated_calculation_claim_is_rejected(self):
+        description = "Thoughtfully designed, printable worksheet for budgeting. " * 10
+        description += " Includes automated rollover compounding."
+        text = ("BEGIN_GUMROAD_DESCRIPTION\n" + description
+                + "\nEND_GUMROAD_DESCRIPTION")
+        with self.assertRaisesRegex(ValueError, "automated calculation"):
+            a.get_listing_copy(text)
+
+    def test_uncertain_public_verification_after_upload_is_review_not_retry(self):
+        class FakeStore:
+            def __init__(self):
+                self.events = []
+            def patch(self, sheet_name, row, values):
+                self.events.append(values)
+        row = dict(sample["gumroad"], **{
+            "Product ID": "KGS-004", "Unique Slug": "new-spending-reset-v2",
+            "Upload Status": "READY"})
+        store = FakeStore()
+        def cli(args):
+            if args[:2] == ["products", "publish"]:
+                return {}
+            if args[:2] == ["products", "view"]:
+                return {"product": {"published": True}}
+            raise AssertionError("Unexpected Gumroad command")
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true",
+                 "GUMROAD_CREATE_DRAFTS": "true", "GUMROAD_AUTOPUBLISH": "true"}), \
+             patch.object(a, "verify_qa_report", return_value=None), \
+             patch.object(a, "gumroad_create_draft", return_value=("new-id", "https://gumroad.com/products/new-id/edit")), \
+             patch.object(a, "gumroad_cli", side_effect=cli), \
+             patch.object(a, "verify_public_product_url", side_effect=ValueError("HTTP 403")):
+            result = a.process_gumroad(store, row)
+        self.assertIn("REVIEW", result)
+        self.assertEqual(store.events[-1]["Upload Status"], "REVIEW")
+
     def test_scheduled_workflow_forbids_gumroad_publication_and_manual_live(self):
         workflow = (ROOT / ".github/workflows/publisher.yml").read_text()
         self.assertIn("GUMROAD_AUTOPUBLISH:", workflow)
