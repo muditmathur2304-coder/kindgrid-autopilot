@@ -518,6 +518,19 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
     client = None
     boards = {}
     slots = 0
+    # Schedule no more than three Pins per NY calendar day, with at most one
+    # per morning/afternoon/evening slot, even if Gemini adds duplicate rows.
+    booked = set()
+    counts = {}
+    if active:
+        historical = store.get_rows("Publishing Queue")
+        for existing in historical:
+            if existing.get("Status") in {"SCHEDULED_BUFFER", "PUBLISHED"}:
+                day = existing.get("Scheduled Date")
+                window = existing.get("Time Window")
+                if day and window:
+                    booked.add((day, window))
+                    counts[day] = counts.get(day, 0) + 1
     for row in rows:
         try:
             pin = validate_pin(row, now, lookahead)
@@ -526,6 +539,14 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
             if not active:
                 result.append(f"{pin['id']}: ready metadata, dry run; no API post created")
                 continue
+            calendar_day = row.get("Scheduled Date", "")
+            slot = row.get("Time Window", "")
+            require(slot in {"Morning", "Afternoon", "Evening"},
+                    "Pin requires a recognised 3-per-day time window")
+            require((calendar_day, slot) not in booked,
+                    "This US daily Pinterest time window already has a scheduled or published Pin")
+            require(counts.get(calendar_day, 0) < 3,
+                    "Three Pinterest Pins already booked for this US calendar day")
             if client is None:
                 client = BufferClient()
                 boards = client.boards()
@@ -561,6 +582,8 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
             store.patch("Publishing Queue", row, {"Status": "SCHEDULED_BUFFER",
                 "Batch ID": str(post.get("id", "")), "Last Error": ""})
             result.append(f"{pin['id']}: scheduled in Buffer; NOT verified live on Pinterest")
+            booked.add((calendar_day, slot))
+            counts[calendar_day] = counts.get(calendar_day, 0) + 1
             slots -= 1
         except ValueError as error:
             if active and "outside rolling queue window" not in str(error):
