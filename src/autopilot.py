@@ -336,6 +336,30 @@ class BufferClient:
         return response["post"]
 
 
+def verify_public_product_url(url: str, expected_slug: str | None = None) -> None:
+    """Do not market or mark an unpublished/404 Gumroad product as usable."""
+    import requests
+    parsed = urlparse(str(url))
+    require(parsed.scheme == "https" and parsed.netloc.lower() in {
+        "kindgridstudio.gumroad.com", "gumroad.com", "www.gumroad.com"
+    }, "Gumroad destination is not on an authorised storefront")
+    if expected_slug:
+        require(parsed.path.rstrip("/").endswith("/" + expected_slug),
+                "Public Gumroad URL does not match the approved product slug")
+    try:
+        response = requests.get(url, timeout=20, allow_redirects=True,
+                                headers={"User-Agent": "Mozilla/5.0 KindGridQualityCheck/2.0"})
+    except requests.RequestException:
+        raise ValueError("Gumroad product page could not be reached") from None
+    require(response.status_code == 200,
+            f"Gumroad product page returned HTTP {response.status_code}; verify before marketing")
+    final = urlparse(response.url)
+    require(final.netloc.lower() in {"kindgridstudio.gumroad.com",
+                                    "gumroad.com", "www.gumroad.com"},
+            "Gumroad product page redirected outside permitted domains")
+    require(len(response.content) > 1000, "Gumroad product page appears empty or inaccessible")
+
+
 def cloudinary_upload(data: bytes, pin_id: str) -> str:
     import cloudinary
     import cloudinary.uploader
@@ -459,13 +483,23 @@ def process_gumroad(store: GoogleStore, row: dict) -> str:
                     "Gumroad Live URL": url, "Last Error": "",
                     "Last Updated UTC": make_timestamp()})
         if enabled("GUMROAD_AUTOPUBLISH"):
-            result = gumroad_cli(["products", "publish", product_id])
+            # Auto-publish ONLY the brand-new draft created and inspected in
+            # this invocation. Never auto-process KGS-003 or historical drafts.
+            gumroad_cli(["products", "publish", product_id])
             reread = gumroad_cli(["products", "view", product_id]).get("product", {})
-            require(bool(reread.get("published")), "Publish attempt not confirmed; manually reconcile")
-            actual_url = str(reread.get("short_url") or url)
+            require(reread.get("published") is True,
+                    "Publish action uncertain; do NOT retry or recreate product")
+            canonical = f"https://kindgridstudio.gumroad.com/l/{parsed['slug']}"
+            short_url = str(reread.get("short_url") or "")
+            if short_url and short_url != canonical:
+                require(urlparse(short_url).netloc.lower() in {
+                    "gumroad.com", "www.gumroad.com", "kindgridstudio.gumroad.com"
+                }, "Gumroad returned an unexpected public link")
+            verify_public_product_url(canonical, parsed["slug"])
             store.patch("Gumroad Upload Queue", row, {"Upload Status": "PUBLISHED",
-                        "Gumroad Live URL": actual_url, "Last Updated UTC": make_timestamp()})
-            return f"{parsed['product_id']}: published and verified ({product_id})"
+                        "Gumroad Live URL": canonical, "Last Error": "",
+                        "Last Updated UTC": make_timestamp()})
+            return f"{parsed['product_id']}: auto-published and verified ({product_id})"
         return f"{parsed['product_id']}: draft verified ({product_id}), NOT published"
     except ValueError as error:
         if enabled("LIVE_MODE"):
@@ -500,6 +534,7 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
                 result.append("Buffer Free queue at 10 posts; wait for scheduled posts to publish")
                 break
             require(pin["board"] in boards, f"Pinterest board '{pin['board']}' not in Buffer")
+            verify_public_product_url(pin["destination"])
             image = store.get_bytes(pin["image_id"], "image/png")
             validate_image(image)
             store.patch("Publishing Queue", row, {"Status": "SCHEDULING",
@@ -588,20 +623,11 @@ def main() -> int:
         verified_drafts = [r for r in gumrows if r.get("Upload Status") == "DRAFT_VERIFIED" and r.get("QA Verified (YES/NO)") == "YES"]
         ready_pin = [r for r in pinrows if r.get("Status") == "READY" and r.get("QA Verified (YES/NO)") == "YES"]
         print(f"Queue: {len(ready_gum)} new products, {len(ready_pin)} Pins")
-        # Existing drafts take precedence over creating new products. Explicit opt-in only.
-        if active and enabled("GUMROAD_AUTOPUBLISH") and verified_drafts:
-            for row in verified_drafts[:1]:
-                try:
-                    print(finalize_existing_draft(store, row))
-                except ValueError as error:
-                    store.patch("Gumroad Upload Queue", row, {"Upload Status": "NEEDS_FIX", "Last Error": str(error)[:450]})
-                    print(f"{row.get('Product ID')}: NEEDS_FIX: {error}")
-                except Exception as error:
-                    store.patch("Gumroad Upload Queue", row, {"Upload Status": "REVIEW", "Last Error": str(error)[:450]})
-                    print(f"{row.get('Product ID')}: REVIEW: {error}")
-        else:
-            for row in ready_gum[:int(os.getenv("MAX_GUMROAD_PER_RUN", "1"))]:
-                print(process_gumroad(store, row))
+        # Never auto-finalize historical DRAFT_VERIFIED items.
+        if verified_drafts:
+            print(f"Protected existing Gumroad drafts: {len(verified_drafts)} (not auto-published)")
+        for row in ready_gum[:int(os.getenv("MAX_GUMROAD_PER_RUN", "1"))]:
+            print(process_gumroad(store, row))
         now = datetime.now(timezone.utc)
         for line in monitor_existing_pins(store, pinrows):
             print(line)
