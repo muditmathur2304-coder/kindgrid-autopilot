@@ -20,8 +20,8 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 SHEET_ID = "1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs"
-EXISTING_PRODUCTS = {"KGS-001", "KGS-002"}
-EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner"}
+EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003"}
+EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009"}
 TRUTHY = {"true", "1", "yes", "on"}
 
 
@@ -313,7 +313,9 @@ def gumroad_cli(args: list[str]) -> dict:
     cmd = ["gumroad"] + args + ["--json", "--no-input"]
     result = subprocess.run(cmd, text=True, capture_output=True, timeout=150, env=env)
     if result.returncode != 0:
-        raise RuntimeError("Gumroad CLI failed: " + (result.stderr or result.stdout)[-700:])
+        # CLI stderr may contain seller tokens or private account information.
+        # Do not print raw output or blindly retry a possibly completed upload.
+        raise RuntimeError(f"Gumroad CLI exited {result.returncode}; verify product state in Gumroad before retrying")
     return json.loads(result.stdout)
 
 
