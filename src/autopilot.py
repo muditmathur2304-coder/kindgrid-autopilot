@@ -461,8 +461,8 @@ def finalize_existing_draft(store: GoogleStore, row: dict) -> str:
     # Gumroad CLI update --file APPENDS embeds, so an old defective PDF
     # might remain on the customer-download page after an attempted fix.
     # Historical release is disabled pending proven content replacement.
-    require(False, "KGS-003 historical draft release blocked: replace the existing
-            customer PDF safely before enabling this path")
+    require(False, "KGS-003 historical draft release blocked: replace the existing "
+            "customer PDF safely before enabling this path")
     require(row.get("Upload Status") == "RELEASE_READY",
             "Existing draft must pass retrospective audit and be RELEASE_READY")
     parsed = validate_gumroad(row, existing_release=True)
