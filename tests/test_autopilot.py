@@ -11,6 +11,19 @@ a = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(a)
 sample = json.loads((ROOT / "sample_queue.json").read_text())
 
+# Test fixtures simulate the NEW audit gate; historical source records still
+# require Gemini's separate retrospective review and must not be auto-approved.
+QA_SAMPLE = {
+    "QA Version": a.QA_VERSION,
+    "QA Report Drive Link": "https://docs.google.com/document/d/1b3dhZzzXs8YzXfsH96T1IkA_3GoaovhvoYULh8eRqZE/edit",
+    "QA Audited UTC": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    "QA Outcome": "PASS",
+}
+sample["gumroad"].update(QA_SAMPLE)
+for record in sample["pinterest"]:
+    record.update(QA_SAMPLE)
+
+
 
 class PreflightTests(unittest.TestCase):
     def test_new_gumroad_004_is_ready(self):
@@ -155,15 +168,93 @@ class PreflightTests(unittest.TestCase):
         with patch.dict(a.os.environ, {"LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true"}), \
              patch.object(a, "BufferClient", return_value=FakeBuffer()), \
              patch.object(a, "validate_image", return_value=(1000, 1500)), \
-             patch.object(a, "cloudinary_upload", return_value="https://res.cloudinary.com/sample/image"):
+             patch.object(a, "cloudinary_upload", return_value="https://res.cloudinary.com/sample/image"), \
+             patch.object(a, "verify_qa_report", return_value=None), \
+             patch.object(a, "verify_public_product_url", return_value=None):
             messages = a.process_pins(store, [record], datetime(2026, 10, 10, tzinfo=timezone.utc))
         self.assertTrue(any("LINK_REVIEW" in m for m in messages))
         self.assertEqual(store.updates[-1]["Status"], "LINK_REVIEW")
         self.assertFalse(any(u["Status"] == "SCHEDULED_BUFFER" for u in store.updates))
 
+    def test_missing_qa_v2_blocks_ready_uploads(self):
+        for dataset in ("gumroad", "pinterest"):
+            base = sample["gumroad"] if dataset == "gumroad" else sample["pinterest"][0]
+            item = dict(base, **{"QA Version": ""})
+            with self.subTest(item=dataset), self.assertRaisesRegex(ValueError, "KGS-QA-V2"):
+                if dataset == "gumroad":
+                    a.validate_gumroad(item)
+                else:
+                    a.validate_pin(item, datetime(2026, 10, 10, tzinfo=timezone.utc), 72)
+
+    def test_expired_qa_requires_reaudit(self):
+        from datetime import timedelta
+        old_time = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        item = dict(sample["gumroad"], **{
+            "Product ID": "KGS-004", "Unique Slug": "new-budget-printable",
+            "QA Audited UTC": old_time
+        })
+        with self.assertRaisesRegex(ValueError, "outdated"):
+            a.validate_gumroad(item)
+
+    def test_unverified_report_cannot_be_accepted(self):
+        class FakeStore:
+            def get_doc_text(self, doc):
+                return "ITEM ID: KGS-004\nQA VERSION: KGS-QA-V2\nRESULT: PASS\n"
+        row = dict(sample["gumroad"], **{
+            "Product ID": "KGS-004", "Unique Slug": "budget-journal-v2",
+        })
+        with self.assertRaisesRegex(ValueError, "substantive"):
+            a.verify_qa_report(FakeStore(), row, "KGS-004")
+
+    def test_existing_gumroad_draft_not_autopublished(self):
+        class FakeStore:
+            def get_rows(self, sheet_name):
+                if sheet_name == "Gumroad Upload Queue":
+                    return [{"Product ID": "KGS-003", "Upload Status": "DRAFT_VERIFIED",
+                             "QA Verified (YES/NO)": "YES"}]
+                return []
+        with patch.dict(a.os.environ, {
+                "GOOGLE_SERVICE_ACCOUNT_JSON_B64": "placeholder",
+                "LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "false",
+                "GUMROAD_AUTOPUBLISH": "true", "DISPATCH_DRY_RUN": "false"}), \
+             patch.object(a, "GoogleStore", return_value=FakeStore()), \
+             patch.object(a, "gumroad_cli") as gumroad:
+            self.assertEqual(a.main(), 0)
+            gumroad.assert_not_called()
+
+    def test_qa_approved_new_product_auto_publishes(self):
+        class FakeStore:
+            def __init__(self):
+                self.updates = []
+            def patch(self, sheet_name, row, values):
+                self.updates.append(values)
+        row = dict(sample["gumroad"], **{
+            "Product ID": "KGS-004", "Unique Slug": "unique-original-budget-planner",
+            "Upload Status": "READY",
+        })
+        store = FakeStore()
+        def cli(command):
+            if command[:2] == ["products", "publish"]:
+                return {"success": True}
+            if command[:2] == ["products", "view"]:
+                return {"product": {"published": True}}
+            raise AssertionError("Unexpected Gumroad CLI call")
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true",
+                 "GUMROAD_CREATE_DRAFTS": "true", "GUMROAD_AUTOPUBLISH": "true"}), \
+             patch.object(a, "verify_qa_report", return_value=None), \
+             patch.object(a, "gumroad_create_draft", return_value=("new-id", "https://gumroad.com/products/new-id/edit")), \
+             patch.object(a, "gumroad_cli", side_effect=cli), \
+             patch.object(a, "verify_public_product_url", return_value=None):
+            outcome = a.process_gumroad(store, row)
+        self.assertIn("auto-published", outcome)
+        self.assertEqual(store.updates[-1]["Upload Status"], "PUBLISHED")
+        self.assertEqual(store.updates[-1]["Gumroad Live URL"],
+                         "https://kindgridstudio.gumroad.com/l/unique-original-budget-planner")
+
     def test_scheduled_workflow_forbids_gumroad_publication_and_manual_live(self):
         workflow = (ROOT / ".github/workflows/publisher.yml").read_text()
-        self.assertIn("GUMROAD_AUTOPUBLISH: 'false'", workflow)
+        self.assertIn("GUMROAD_AUTOPUBLISH:", workflow)
+        self.assertIn("GUMROAD_CREATE_DRAFTS:", workflow)
         self.assertIn("github.event_name == 'schedule'", workflow)
         self.assertIn("AUTOPILOT_PAUSED", workflow)
         self.assertIn("AUTOPILOT_LIVE_ENABLED == 'true'", workflow)
