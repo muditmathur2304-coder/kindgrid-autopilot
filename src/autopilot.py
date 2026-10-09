@@ -21,6 +21,9 @@ from zoneinfo import ZoneInfo
 
 SHEET_ID = "1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs"
 EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003"}
+QA_VERSION = "KGS-QA-V2"
+QA_FIELDS = ("ASSET_OPEN", "VISUAL", "CONTENT", "COPY", "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH")
+
 EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009"}
 TRUTHY = {"true", "1", "yes", "on"}
 
@@ -57,8 +60,46 @@ def validate_destination(url: str) -> str:
     return url
 
 
+def validate_qa_metadata(row: dict) -> None:
+    """Require a current, item-linked QA audit before any new publishing action."""
+    require(str(row.get("QA Version", "")).strip() == QA_VERSION,
+            "Requires retrospective KGS-QA-V2 audit before publishing")
+    require(str(row.get("QA Outcome", "")).strip().upper() == "PASS",
+            "QA Outcome must be PASS")
+    google_file_id(row.get("QA Report Drive Link", ""), "document")
+    stamp = str(row.get("QA Audited UTC", "")).strip()
+    try:
+        audited = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        raise ValueError("QA Audited UTC must contain a valid ISO-8601 timestamp") from None
+    require(audited.tzinfo is not None, "QA audit timestamp requires UTC timezone")
+    age = datetime.now(timezone.utc) - audited.astimezone(timezone.utc)
+    require(timedelta(minutes=-5) <= age <= timedelta(days=14),
+            "QA report is outdated or dated in the future; re-audit item")
+
+
+def verify_qa_report(store, row: dict, item_id: str) -> None:
+    """Independent existence/structure check for Gemini's signed QA record.
+
+    This cannot prove visual/semantic perfection; it ensures auditable evidence
+    exists and is specific to the item being released, never a stale placeholder.
+    """
+    validate_qa_metadata(row)
+    report_id = google_file_id(row["QA Report Drive Link"], "document")
+    report = store.get_doc_text(report_id)
+    normalized = "\n".join(x.strip().upper() for x in report.splitlines())
+    require(len(report.strip()) >= 350, "QA report must contain substantive inspection evidence")
+    require(f"ITEM ID: {item_id.upper()}" in normalized, "QA report item ID mismatch")
+    require(f"QA VERSION: {QA_VERSION}" in normalized, "QA version missing from linked report")
+    require("RESULT: PASS" in normalized, "QA report has not confirmed PASS")
+    for check in QA_FIELDS:
+        require(f"{check}: PASS" in normalized, f"QA report missing {check}: PASS")
+    require("EVIDENCE:" in normalized, "QA report lacks documented inspection evidence")
+
+
 def validate_gumroad(row: dict) -> dict:
     require(str(row.get("QA Verified (YES/NO)", "")).upper() == "YES", "Gemini QA not approved")
+    validate_qa_metadata(row)
     require(row.get("Upload Status") == "READY", "Not ready for Gumroad")
     product_id = str(row.get("Product ID", "")).strip()
     require(re.fullmatch(r"KGS-\d{3,}", product_id) is not None, "Invalid product ID")
@@ -93,6 +134,7 @@ def pin_due_at(row: dict) -> datetime:
 def validate_pin(row: dict, now: datetime, lookahead_hours: int) -> dict:
     require(row.get("Status") == "READY", "Pin is not marked READY")
     require(str(row.get("QA Verified (YES/NO)", "")).upper() == "YES", "Pin is not QA approved")
+    validate_qa_metadata(row)
     key = str(row.get("Queue ID", ""))
     require(re.fullmatch(r"Q-\d{2,}", key) is not None, "Invalid Pin ID")
     title = str(row.get("Pin Title", "")).strip()
@@ -405,6 +447,8 @@ def process_gumroad(store: GoogleStore, row: dict) -> str:
     marker = make_timestamp()
     try:
         parsed = validate_gumroad(row)
+        if enabled("LIVE_MODE"):
+            verify_qa_report(store, row, parsed["product_id"])
         if not enabled("LIVE_MODE") or not enabled("GUMROAD_CREATE_DRAFTS"):
             return f"{parsed['product_id']}: validated metadata; dry run; no product created"
         store.patch("Gumroad Upload Queue", row, {"Upload Status": "UPLOADING",
@@ -443,6 +487,8 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
     for row in rows:
         try:
             pin = validate_pin(row, now, lookahead)
+            if active:
+                verify_qa_report(store, row, pin["id"])
             if not active:
                 result.append(f"{pin['id']}: ready metadata, dry run; no API post created")
                 continue
