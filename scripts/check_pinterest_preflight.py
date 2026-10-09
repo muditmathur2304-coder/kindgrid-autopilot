@@ -1,12 +1,15 @@
 """Preflight Buffer Pinterest API capabilities without posting or hosting images."""
 import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.autopilot import BufferClient
 
 EXPECTED = {
     "Savings Challenges & Money Trackers",
     "Budgeting Printables & Cash Stuffing",
     "Debt Free Journey & Payoff Trackers",
+    "Calm Living & Minimalist Planners",
 }
 
 
