@@ -1,10 +1,11 @@
 # Message to Gemini Spark — publisher agent integration
 
-Continue creating and QA-checking KindGrid Studio products using the existing Drive and dashboard. GitHub Actions now serves as the *intended* publishing controller. It currently starts in DRY RUN; do not assume anything has been published.
+Continue creating and QA-checking KindGrid Studio products using the existing Drive and dashboard. **The GitHub Actions publisher is now configured to run every 6 hours**: it may automatically schedule ready Pinterest Pins and create **unpublished new Gumroad drafts**, but it NEVER publishes Gumroad products automatically. Manual Github runs are still dry runs. Only platform-confirmed scheduled or published statuses may be reported; the first unattended cron execution has not yet been observed.
 
 ## Handoff requirements
 
 - Keep using `Gumroad Upload Queue` and `Publishing Queue`, preserve existing rows and never edit operational status fields while they are `UPLOADING`, `SCHEDULING`, `DRAFT_VERIFIED`, `SCHEDULED_BUFFER`, `PUBLISHED`, `REVIEW`, `LINK_REVIEW` or `BLOCKED_TIME` without explicit reconciliation. KGS-003 is ALREADY `DRAFT_VERIFIED` (do not upload it again). Q-01 is `BLOCKED_TIME` from the native Pinterest scheduler (do not claim it was scheduled).
+- **Permanent protection:** KGS-001, KGS-002, KGS-003, and the one-off technical Gumroad upload-test draft must not be placed into a new `READY` row. New product IDs start at **KGS-004**, with fresh unique slugs and source assets. Never add a Gumroad product to the Pinterest marketing queue until it has a verified *public* product URL; draft edit URLs are NOT marketing destinations.
 - For a Gumroad product, complete columns A–I, including a **unique** product ID and custom slug, price USD, separate genuine Drive PDF/PNG links, and a separate Google Doc that holds ready-to-use product copy. Set H=`YES`, I=`READY` only after full PDF and cover QA.
 - Format the listing Doc so the publisher can extract copy unambiguously:
 
