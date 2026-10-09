@@ -1,6 +1,6 @@
 # Message to Gemini Spark — publisher agent integration
 
-Continue creating and QA-checking KindGrid Studio products using the existing Drive and dashboard. **The GitHub Actions publisher is now configured to run every 6 hours**: it may automatically schedule ready Pinterest Pins and create **unpublished new Gumroad drafts**, but it NEVER publishes Gumroad products automatically. Manual Github runs are still dry runs. Only platform-confirmed scheduled or published statuses may be reported; the first unattended cron execution has not yet been observed.
+Continue creating and QA-checking KindGrid Studio products using the existing Drive and dashboard. **The GitHub Actions publisher is configured to run every 6 hours, but requires the owner's final `AUTOPILOT_LIVE_ENABLED=true` repository variable before scheduling or creating drafts.** Once enabled, it may automatically schedule READY Pinterest Pins and create **unpublished new Gumroad drafts**; it NEVER publishes Gumroad products automatically. Manual Github runs are still dry runs. Only platform-confirmed scheduled or published statuses may be reported; the first unattended cron execution has not yet been observed.
 
 ## Handoff requirements
 
