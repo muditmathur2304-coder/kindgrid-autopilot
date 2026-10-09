@@ -464,6 +464,13 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
             # CRITICAL: Buffer's roadmap has a reported bug dropping destination URLs.
             # Immediately halt this item if returned Pin link is absent/wrong.
             returned_url = (post.get("metadata") or {}).get("url")
+            # A successful API mutation can create a post even when response
+            # metadata is incomplete. Never return it to READY automatically.
+            if not post.get("id"):
+                store.patch("Publishing Queue", row, {"Status": "LINK_REVIEW",
+                    "Last Error": "Buffer may have created Pin but returned no post ID; inspect Buffer before retrying"})
+                result.append(f"{pin['id']}: LINK_REVIEW; missing Buffer post ID")
+                break
             if returned_url != pin["destination"]:
                 store.patch("Publishing Queue", row, {"Status": "LINK_REVIEW",
                     "Last Error": "Buffer Pin destination URL absent/different; inspect created post ID " + str(post.get("id")),
@@ -552,8 +559,16 @@ def main() -> int:
         now = datetime.now(timezone.utc)
         for line in monitor_existing_pins(store, pinrows):
             print(line)
-        for line in process_pins(store, ready_pin[:int(os.getenv("MAX_PINS_PER_RUN", "3"))], now):
-            print(line)
+        # Once a previous Pin is in an uncertain state, halt *future* batches
+        # until the owner reconciles that post; not merely the current run.
+        uncertain_pins = [r.get("Queue ID") for r in pinrows
+                          if r.get("Status") in {"LINK_REVIEW", "REVIEW", "SCHEDULING"}]
+        if uncertain_pins and enabled("LIVE_MODE") and enabled("PIN_AUTOSCHEDULE"):
+            print("PINTEREST_PAUSED: Unresolved Pin state(s): " + ", ".join(uncertain_pins[:10]))
+            print("No further Pins scheduled until Buffer/dashboard statuses are reconciled.")
+        else:
+            for line in process_pins(store, ready_pin[:int(os.getenv("MAX_PINS_PER_RUN", "3"))], now):
+                print(line)
         return 0
     except Exception as error:
         print(f"BLOCKED: {type(error).__name__}: {error}", file=sys.stderr)
