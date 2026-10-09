@@ -2,7 +2,7 @@
 
 **Purpose:** Gemini Spark prepares PDFs, product covers and Pinterest images, and records `READY` rows in the existing KindGrid Studio Google Sheets dashboard. A scheduled GitHub Actions workflow checks those rows **every 6 hours** and (only after credentials/permissions and a pilot are validated) performs the repetitive publishing work. It never generates or rewrites creative assets.
 
-> **CURRENT STATE (2026-10-09):** Deployed to a private GitHub repository. Google/Buffer/Cloudinary/Gumroad credentials were verified. A single Pinterest Pin was scheduled through GitHub and its Gumroad destination confirmed; a separate unpublished Gumroad draft was created with both attachments and visually verified by the owner. The 6-hour schedule is now **configured for actual operation**, but the first unattended scheduled run has NOT yet been observed. Scheduled runs can schedule approved Pinterest Pins and create *new unpublished* Gumroad drafts only. **Gumroad live publication is hard-locked off.** See [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md) for the current runbook and pause switch.
+> **CURRENT STATE (2026-10-09):** Deployed to a private GitHub repository. Google/Buffer/Cloudinary/Gumroad credentials were verified. A single Pinterest Pin was scheduled through GitHub and its Gumroad destination confirmed; a separate unpublished Gumroad draft was created with both attachments and visually verified by the owner. The 6-hour schedule is configured but **held in safe read-only mode until the repository variable `AUTOPILOT_LIVE_ENABLED=true` is explicitly set** following the final regression test. The first unattended live run has NOT yet been observed. Scheduled runs can schedule approved Pinterest Pins and create *new unpublished* Gumroad drafts only. **Gumroad live publication is hard-locked off.** See [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md) for the current runbook and pause switch.
 
 Dashboard: https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit
 
@@ -78,6 +78,7 @@ In `.github/workflows/publisher.yml`, only **scheduled** (cron) runs can be live
 | `PIN_AUTOSCHEDULE` | true on schedule | Up to 3 approved Pins/run within Buffer queue limits |
 | `GUMROAD_CREATE_DRAFTS` | true on schedule | Up to 1 **new unpublished** product draft/run |
 | `GUMROAD_AUTOPUBLISH` | **false, hard-locked** | Cannot publish Gumroad products on schedule |
+| `AUTOPILOT_LIVE_ENABLED` repository variable | **absent by default** | Only exact `true` authorizes scheduled writes; leave unset until safe preview passes |
 | `AUTOPILOT_PAUSED` repository variable | absent/false | Set to `true` to pause ALL scheduled external writes |
 
 The `workflow_dispatch` screen is for safe previews. Refer to [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md), not the outdated pilot instructions below, for actual operation.
