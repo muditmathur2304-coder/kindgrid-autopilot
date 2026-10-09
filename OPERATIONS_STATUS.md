@@ -1,67 +1,72 @@
-# KindGrid Autopilot — live operations and safety (2026-10-09)
+# KindGrid Studio — Automation Operations Status (QA V2)
+Last policy update: October 9, 2026. Source of truth: Google Sheets Business Dashboard and the live platform APIs.
 
-## Activation state
+## Live workflow
 
-The GitHub Actions workflow `.github/workflows/publisher.yml` is configured to execute at **00:00, 06:00, 12:00, and 18:00 UTC** (05:30, 11:30, 17:30, 23:30 IST), subject to GitHub scheduled-run delays. **Safe holding mode is currently active:** no six-hour run may write to Gumroad or Buffer until a user sets the repository variable `AUTOPILOT_LIVE_ENABLED=true` after a successful read-only regression test. The next *unattended* live run must be checked before considering periodic operation proven.
+- GitHub Actions workflow: `.github/workflows/publisher.yml`
+- Frequency: **every 2 hours** at even UTC hours 00:00,02:00,...22:00 (India: 05:30,07:30,...03:30, 12 runs per day). GitHub cron is best-effort; actual start may be delayed.
+- Owner enable gate: `AUTOPILOT_LIVE_ENABLED=true` repository variable; pause gate `AUTOPILOT_PAUSED=true`. Without an enabled gate or while paused, scheduled runs are dry read-only checks.
+- Manual workflow dispatch ALWAYS remains read-only, even if its dry_run checkbox is false. Never use an old one-off live pilot again.
+- Each 2-hour run MAY publish **one genuinely new, quality-approved Gumroad product** and MAY schedule up to 3 Pins if eligible, while respecting one Pin per US morning/afternoon/evening window and Buffer Free 10-queued-item limit.
+- Publishing is conditional, not an obligation. Zero audited READY products -> zero Gumroad uploads. No manufactured or repetitive products to meet the cadence.
+- `GUMROAD_AUTOPUBLISH` runs only when enabled and not paused; **no per-product human approval required** after the automated QA V2 gate. Draft creation with explicit `--draft`, verify PDF and cover, publish that newly created draft, read back published status, and independently check its public product URL.
+- Historical `KGS-003`: remains protected at `DRAFT_VERIFIED`; never recreate it. Only after Gemini corrects the existing listing and issues a valid QA V2 report may it set `RELEASE_READY` with the unchanged genuine edit URL `https://gumroad.com/products/wzlgpm/edit`. On the next 2-hour run GitHub can update and publish that specific existing draft. If its identity, links, attachment, QA, or public page fail validation, stop and record REVIEW rather than auto-retrying.
+- Existing KGS-001/KGS-002 and technical one-off upload test are never recreated, altered, or automatically republished. Q-02 already scheduled in Buffer and must never be submitted again.
 
-**Scheduled runs (only after explicitly enabled, and not paused):**
-- `LIVE_MODE=true`
-- `PIN_AUTOSCHEDULE=true`: schedule only `READY` Pinterest rows with `QA Verified (YES/NO)=YES`, up to 3 Pins per run, future date within 72 hours, within Buffer Free's 10-item queue. Images come from the linked individual Google Drive PNGs; Cloudinary holds only the public Pin creatives.
-- `GUMROAD_CREATE_DRAFTS=true`: create **unpublished** Gumroad drafts only for brand-new, valid `READY` product rows, at most one per run. Install Gumroad CLI only if a new eligible draft exists.
-- `GUMROAD_AUTOPUBLISH=false`: **hard-locked in workflow**. No scheduled run can publish Gumroad drafts. Publication requires a separate future authorization and tested change.
-- Already-uploaded Gumroad products `KGS-001`, `KGS-002`, `KGS-003`, and the technical pilot slug are protected from creation by ID/slug guardrails.
-- Existing KGS-003 remains `DRAFT_VERIFIED`. Do not modify it or put it back to `READY`.
-- Already scheduled Pinterest Q-02 remains `SCHEDULED_BUFFER` with an existing Buffer ID; cannot be submitted again by the READY-only filter.
-- Q-01 is `BLOCKED_TIME`; do not bypass its review status or misreport it as scheduled.
-- If any Pin has `LINK_REVIEW`, `REVIEW`, or `SCHEDULING`, new Pinterest submissions pause across subsequent runs until manually reconciled. Existing scheduled Pins can still be checked for sent status.
-- No empty-queue Gumroad CLI installation, duplicate retries after uncertain Gumroad or Buffer operations, or browser-based ChatGPT Work publishing.
+## Gemini Spark orchestration — must be configured in Gemini
 
-**Manually triggered runs of this same workflow** always have `LIVE_MODE=false`, regardless of how the `dry_run` checkbox is set. Use them for safe connection checks and queue previews only.
+- Creative + retrospective QA cadence: **every 4 hours**, IST 00:45,04:45,08:45,12:45,16:45,20:45, approximately 45 minutes before alternating GitHub checks.
+- One separate Sunday 10:00 IST deep content-audit/strategy pass (only if existing Sunday schedule supports it).
+- IMPORTANT: Changing this GitHub repository **does not change Gemini Spark's own schedules**. Owner must paste/execute `GEMINI_MASTER_PROMPT_QA_V2.md` in Gemini, verify Gemini actually registered the requested schedule, and accept any honest scheduling limitations.
+- Comprehensive master prompt stored in GitHub and Google Doc: https://docs.google.com/document/d/1BZy_Pkc8QUe0PEnpCNr1B1aYuXa7jdTogHfprWf9lSk/edit
+- Target ~1 polished original product/day to start; higher volume only if QA survives. Gemini should instead prioritize prior failures, link/asset repairs and 7-day Pinterest backlog.
 
-## Pause immediately
+## Pinterest times (America/New_York authoritative)
 
-**To activate after the manual preview succeeds:** GitHub repository -> Settings -> Secrets and variables -> Actions -> Variables -> New repository variable `AUTOPILOT_LIVE_ENABLED` = `true`. If this variable is missing or has any other value, scheduled runs are read-only.
+- Morning 08:30 NY: 18:00 IST during EDT, 19:00 IST during EST.
+- Afternoon 14:30 NY: 00:00 IST next day EDT, 01:00 IST next day EST.
+- Evening 20:30 NY: 06:00 IST next day EDT, 07:00 IST next day EST.
+- Convert using actual DST for the date (US DST ends Nov 1 2026).
+- Primary Publishing Queue and secondary Pinterest planning sheet already updated for Q-01 and unscheduled Q-03 through Q-42; Q-02's existing accepted 14:28 EDT time was preserved. Do not alter any scheduled Buffer post to match a spreadsheet retroactively.
+- Q-01 still BLOCKED_TIME until audited and consciously changed to READY. Q-03..Q-06 have source images but need NEW QA-V2 evidence. Q-07..Q-42 need actual separate loose Drive images and audits; a ZIP is not publishable input.
 
-**Option A — pause without disabling the workflow:** GitHub repository -> Settings -> Secrets and variables -> Actions -> Variables -> New repository variable named `AUTOPILOT_PAUSED` with the value `true`. Future six-hour runs become read-only. Delete the variable or set it to `false` to resume.
+## Hard QA release gate (both Sheets queues)
 
-**Option B — stop scheduled runs entirely:** GitHub -> Actions -> KindGrid Autopilot (6-hour scheduled publisher) -> three-dot workflow menu -> Disable workflow. This prevents any further scheduled runs until re-enabled.
+Exactly FOUR new columns are enforced by GitHub:
+1. `QA Version`: must equal `KGS-QA-V2`.
+2. `QA Report Drive Link`: actual Google Doc URL owned/shared with KindGrid publisher service account.
+3. `QA Audited UTC`: real ISO-8601 UTC timestamp, no more than 14 days old.
+4. `QA Outcome`: must equal `PASS`.
 
-For a suspected duplicate or incorrect destination, pause the workflow before changing any statuses. Review actual Gumroad or Buffer listing before retrying.
+In addition, original `QA Verified (YES/NO)=YES` and correct `READY` status are required for new items, together with valid Google Drive PDF/cover or loose image, appropriate listing copy, acceptable price/slug, accurate Pinterest board/three daily slots, and a destination page independently reachable from GitHub. The QA report must specifically identify the current item, contain substantive EVIDENCE, and certify all eight mandatory checks: ASSET_OPEN, VISUAL, CONTENT, COPY, LINKS, LICENSE, FACTS, PRODUCT_MATCH. The controller verifies structural presence, while Gemini must actually inspect evidence; an AI self-report alone cannot guarantee flawless content.
 
-## Queue ownership
+Important restrictions:
+- Gemini may set `READY` ONLY after creating and checking the actual linked QA record and source media.
+- Historical items that lack these extra fields are intentionally blocked until retrospectively reaudited. Do not backfill PASS from old 'YES' flags.
+- Broken public destination URL, wrong/missing image, outdated report, wrong listing, incomplete PDFs, suspect page formats, overly strong refund/performance claims or possible duplicate -> no publication.
+- A failed / uncertain Gumroad attempt goes to REVIEW or NEEDS_FIX; never blindly retry or reset to READY.
+- An uncertain Pinterest state LINK_REVIEW/REVIEW/SCHEDULING halts future scheduled Pin batches until reconciled.
 
-**Gemini Spark:** Creates, reviews, and fixes original assets; populates real individual Google Drive links; marks only genuinely completed items READY/QA=YES. It never edits IDs or submitted listings to force retries.
+## Independent outcome verification
 
-**GitHub controller:** Pulls READY items; validates metadata/assets; submits only allowed platform operations; records status and platform ID in the existing Google Sheet.
+- Gumroad `PUBLISHED`: API reported published AND public verified Gumroad URL recorded. `DRAFT_VERIFIED` is NOT for sale.
+- Pinterest `SCHEDULED_BUFFER`: accepted by Buffer, NOT yet published on Pinterest. `PUBLISHED`: Buffer reports sent with Pinterest external URL.
+- The first scheduled 2-hour run of the NEW workflow is not yet independently confirmed here. Check actual GitHub Actions logs for `live=True` and all unit tests passed.
+- Automatic new-product public publishing path remains unproven in a live release: the Gumroad pilot previously verified draft upload only. QA V2 and auto-publish release code must pass new regression tests before relying on unattended distribution.
 
-**Human exception review:** Security challenges, ambiguous API results, refunds/licensing questions, draft publication approvals, incorrect Pinterest destination, or any status `REVIEW` / `LINK_REVIEW`.
+## Owner controls / pause
 
-Gemini's own scheduled job must independently inspect Google Sheets errors; GitHub cannot summon a Gemini Spark chat directly. This is an *asynchronous* feedback loop, not an instantly self-correcting autonomous agent.
+- Stop writes: GitHub Settings -> Secrets and variables -> Actions -> Variables -> `AUTOPILOT_PAUSED` = `true`, or disable the workflow in GitHub Actions.
+- Resume: `AUTOPILOT_PAUSED=false` and `AUTOPILOT_LIVE_ENABLED=true` (after checking quality failures).
+- All secrets remain in GitHub Actions Secrets; NEVER put Gumroad/Buffer/Cloudinary/Google credentials in source code, creative assets, Gemini prompts or ChatGPT chat.
+- The autonomous feedback loop is ASYNCHRONOUS. GitHub writes issue statuses to Sheets; Spark must independently reread and fix them on its genuine schedule. No browser bridge or direct Gemini-chat trigger is implied.
 
-## Status and verification
+## Actual evidence and relevant links
 
-- `SCHEDULED_BUFFER` = accepted by Buffer, **not yet live on Pinterest**.
-- `PUBLISHED` (Pinterest) = Buffer reported sent and provided a Pinterest URL.
-- `DRAFT_VERIFIED` (Gumroad) = draft with verified PDF + cover, **not publicly for sale**.
-- `NEEDS_FIX` = creative/file issue Gemini should fix before re-approval.
-- `REVIEW` / `LINK_REVIEW` = uncertain platform state, manual reconciliation required.
-- Never use an empty `Batch ID` or API timeout as authorization for another posting attempt.
-
-Check the *first scheduled GitHub run* and ensure it reports `live=True`. Verify that any queued Pin preserves its exact Gumroad destination link before treating the pipeline as reliable.
-
-## Recurring publication limits
-
-Github Actions scheduled runs may be delayed; the configured cron is not a guaranteed exact-time SLA. Buffer Free queue has up to 10 scheduled posts at once; 3/day is a **target**, dependent on enough verified Gemini assets being ready on time. Usage and API limits may change. No guarantee of sales or uninterrupted account access.
-
-## Relevant links
-
-- GitHub Actions: https://github.com/muditmathur2304-coder/kindgrid-autopilot/actions/workflows/publisher.yml
-- Business Dashboard: https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit
+- First Pinterest Q-02 submission and destination were confirmed by owner, with Buffer post ID recorded in the Google Sheet.
+- First technical Gumroad upload created an unpublished 8-page PDF + cover draft and was independently verified by owner; this proves draft upload, not live new-product auto-publication.
+- GitHub publisher: https://github.com/muditmathur2304-coder/kindgrid-autopilot/actions/workflows/publisher.yml
+- Google Dashboard: https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit
 - Buffer: https://publish.buffer.com/
 - Gumroad: https://gumroad.com/products
-
-## Evidence from prior pilot tests
-
-- Pinterest Q-02: created through Github/Buffer and verified by the owner, retained the correct paid-product destination URL.
-- Gumroad technical draft: created through GitHub CLI and verified by owner as unpublished with cover and 8-page PDF.
-- Both tests were one-time/manual triggers, NOT evidence that the six-hour scheduled job has completed successfully yet.
+- Gemini master QA prompt: https://github.com/muditmathur2304-coder/kindgrid-autopilot/blob/main/GEMINI_MASTER_PROMPT_QA_V2.md
