@@ -28,7 +28,7 @@ GitHub reads `Gumroad Upload Queue`. A new KGS-004+ item is eligible ONLY if:
 
 When eligible, the publisher downloads the PDF/cover, creates an **unpublished draft first**, rereads it to verify attachments, THEN publishes that *newly created* draft and verifies the public product URL. At most **one new product per 2-hour check**. No approval click is required after legitimate QA V2 PASS, but unverified content does not get published.
 
-Historical KGS-001 / KGS-002 remain protected. KGS-003's pre-existing draft stays `DRAFT_VERIFIED` until Gemini finishes a **retrospective** QA V2 and sets `RELEASE_READY`; only this known original draft can then be updated/published via the separate protected path. The technical upload test must never be published or recreated.
+Historical KGS-001 / KGS-002 remain protected. KGS-003's historical draft is held at `DRAFT_VERIFIED`, with QA revoked following independent PDF review. Its source calculations and representations must be corrected and its actual Gumroad delivery file REPLACED (not appended); the historical automatic release routine is disabled until content replacement is supported and proven. Do NOT set RELEASE_READY yet. The technical upload test must never be published or recreated.
 
 ## Pinterest publication
 
