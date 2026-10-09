@@ -2,9 +2,9 @@
 
 ## Activation state
 
-The GitHub Actions workflow `.github/workflows/publisher.yml` is configured to execute at **00:00, 06:00, 12:00, and 18:00 UTC** (05:30, 11:30, 17:30, 23:30 IST), subject to GitHub scheduled-run delays. The next *unattended* run must be checked before considering periodic operation proven.
+The GitHub Actions workflow `.github/workflows/publisher.yml` is configured to execute at **00:00, 06:00, 12:00, and 18:00 UTC** (05:30, 11:30, 17:30, 23:30 IST), subject to GitHub scheduled-run delays. **Safe holding mode is currently active:** no six-hour run may write to Gumroad or Buffer until a user sets the repository variable `AUTOPILOT_LIVE_ENABLED=true` after a successful read-only regression test. The next *unattended* live run must be checked before considering periodic operation proven.
 
-**Scheduled runs (when not paused):**
+**Scheduled runs (only after explicitly enabled, and not paused):**
 - `LIVE_MODE=true`
 - `PIN_AUTOSCHEDULE=true`: schedule only `READY` Pinterest rows with `QA Verified (YES/NO)=YES`, up to 3 Pins per run, future date within 72 hours, within Buffer Free's 10-item queue. Images come from the linked individual Google Drive PNGs; Cloudinary holds only the public Pin creatives.
 - `GUMROAD_CREATE_DRAFTS=true`: create **unpublished** Gumroad drafts only for brand-new, valid `READY` product rows, at most one per run. Install Gumroad CLI only if a new eligible draft exists.
@@ -19,6 +19,8 @@ The GitHub Actions workflow `.github/workflows/publisher.yml` is configured to e
 **Manually triggered runs of this same workflow** always have `LIVE_MODE=false`, regardless of how the `dry_run` checkbox is set. Use them for safe connection checks and queue previews only.
 
 ## Pause immediately
+
+**To activate after the manual preview succeeds:** GitHub repository -> Settings -> Secrets and variables -> Actions -> Variables -> New repository variable `AUTOPILOT_LIVE_ENABLED` = `true`. If this variable is missing or has any other value, scheduled runs are read-only.
 
 **Option A — pause without disabling the workflow:** GitHub repository -> Settings -> Secrets and variables -> Actions -> Variables -> New repository variable named `AUTOPILOT_PAUSED` with the value `true`. Future six-hour runs become read-only. Delete the variable or set it to `false` to resume.
 
