@@ -14,7 +14,7 @@
 
 ## Exact timing
 
-- Publisher cron: `0 */2 * * *` UTC (00,02,...22). In IST: 05:30,07:30,...03:30. GitHub may run late.
+- Publisher cron: `17 */2 * * *` UTC (even UTC hours at :17). In IST: 05:47,07:47,...03:47. This avoids the busiest minute for GitHub scheduled jobs, but runs may still be delayed or skipped.
 - Gemini should maintain a separate four-hourly QA/creative schedule: **00:45,04:45,08:45,12:45,16:45,20:45 IST**. IMPORTANT: This schedule must be created and verified inside Gemini, not by the GitHub code.
 - Pinterest: three distinctive Pins per **US calendar day**, at 08:30,14:30,20:30 **America/New_York**. Correctly convert DST (EDT before Nov 1 2026, EST thereafter).
 - Exception: Q-02 previously scheduled for Oct 12 2026 14:28 EDT must remain unchanged.
