@@ -24,7 +24,7 @@ EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003", "KGS-004", "KGS-005"}
 QA_VERSION = "KGS-QA-V2"
 QA_FIELDS = ("ASSET_OPEN", "VISUAL", "CONTENT", "COPY", "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH")
 
-EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009"}
+EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009", "weekly-meal-grocery-budget-kit", "subscription-renewal-control-kit"}
 TRUTHY = {"true", "1", "yes", "on"}
 
 
