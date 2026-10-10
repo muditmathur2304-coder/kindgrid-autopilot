@@ -20,11 +20,11 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 SHEET_ID = "1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs"
-EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003", "KGS-004", "KGS-005"}
+EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003", "KGS-004", "KGS-005", "KGS-006", "KGS-007"}
 QA_VERSION = "KGS-QA-V2"
 QA_FIELDS = ("ASSET_OPEN", "VISUAL", "CONTENT", "COPY", "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH")
 
-EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009", "weekly-meal-grocery-budget-kit", "subscription-renewal-control-kit"}
+EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009", "weekly-meal-grocery-budget-kit", "subscription-renewal-control-kit", "paycheck-gap-playbook", "paycheck-gap-starter"}
 TRUTHY = {"true", "1", "yes", "on"}
 
 
@@ -56,7 +56,17 @@ def validate_destination(url: str) -> str:
     require(parsed.netloc.lower() == "kindgridstudio.gumroad.com", "Unexpected destination host")
     require(re.fullmatch(r"/l/[a-z0-9-]+/?", parsed.path) is not None,
             "Destination must be an individual KindGrid Gumroad product")
-    require(not parsed.query and not parsed.fragment, "Unexpected parameters on destination")
+    # Permit standard campaign measurement while blocking redirects, arbitrary
+    # identifiers and non-Gumroad domains. Do not strip Pinterest attribution.
+    from urllib.parse import parse_qsl
+    permitted = {"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"}
+    parts = parse_qsl(parsed.query, keep_blank_values=True)
+    require(not parsed.fragment and all(k in permitted for k, _ in parts),
+            "Only standard UTM campaign parameters are allowed on destination")
+    require(len(parts) <= 5 and len({k for k, _ in parts}) == len(parts),
+            "Campaign parameters are duplicated or excessive")
+    require(all(0 < len(v) <= 100 for _, v in parts),
+            "Campaign tag is empty or excessively long")
     return url
 
 
