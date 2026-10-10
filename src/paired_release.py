@@ -70,6 +70,21 @@ def prepare_pair(store, paid, free, target: Path) -> dict:
     """Inspect real Google Drive assets before any external mutation."""
     pair_id = paid["Pair ID"]
     files = {}
+    # A commercial-demand hypothesis must be documented before any paid
+    # product launches. The report records observed competitors and caveats,
+    # never imaginary Pinterest search volume or guaranteed sales.
+    research_ids = {
+        a.google_file_id(str(row.get("Demand Evidence Doc Link") or ""), "document")
+        for row in (paid, free)
+    }
+    a.require(len(research_ids) == 1,
+              f"{pair_id}: paid and free must share one actual demand research report")
+    research = store.get_doc_text(next(iter(research_ids)))
+    required = ("BUYER PROBLEM", "COMPETITOR", "DIFFERENTIATION", "EVIDENCE", "LIMITATION")
+    a.require(len(research.strip()) >= 750 and
+              all(term in research.upper() for term in required) and
+              research.lower().count("https://") >= 2,
+              f"{pair_id}: demand/competition report missing specific evidence or caveats")
     paid_url = ("https://kindgridstudio.gumroad.com/l/" +
                 paid["Unique Slug"].strip())
     for role, row in (("PAID", paid), ("FREE", free)):
@@ -78,6 +93,14 @@ def prepare_pair(store, paid, free, target: Path) -> dict:
         cover = store.get_bytes(a.google_file_id(row["Cover Drive Link"]), "image/png")
         count = a.validate_pdf(pdf)
         a.validate_image(cover)
+        sheet_url = str(row.get("Visual Audit Contact Sheet Link") or "").strip()
+        contact = store.get_bytes(a.google_file_id(sheet_url), "image/png")
+        # Contact sheets are mosaics, not 2:3 portrait covers.
+        from PIL import Image
+        with Image.open(io.BytesIO(contact)) as image:
+            image.verify()
+            a.require(image.width >= 850 and image.height >= 500,
+                      f"{pair_id}: {role} page-by-page contact sheet unreadable")
         a.require((16 <= count <= 55) if role == "PAID" else (3 <= count <= 7),
                   f"{pair_id}: {role} workbook page count outside quality gate")
         listing = store.get_doc_text(
@@ -121,6 +144,8 @@ def prepare_pair(store, paid, free, target: Path) -> dict:
             preview = target / (role.lower() + "_gallery_" + str(len(item["previews"]) + 1) + ".png")
             preview.write_bytes(raw)
             item["previews"].append(preview)
+        a.require(len(item["previews"]) >= (2 if role == "PAID" else 1),
+                  f"{pair_id}: {role} must have real customer-visible gallery previews")
         files[role] = item
     return files
 
