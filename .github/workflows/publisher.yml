@@ -29,7 +29,8 @@ jobs:
       PIN_AUTOSCHEDULE: 'false' # QUALITY HOLD: release only after premium free+paid funnel QA and pin strategy gate
       GUMROAD_CREATE_DRAFTS: 'false' # QUALITY HOLD: old single-product creation path disabled
       GUMROAD_AUTOPUBLISH: 'false' # QUALITY HOLD: do not publish isolated/mediocre items
-      MAX_GUMROAD_PER_RUN: '1'
+      PAIRED_RELEASE_ENABLED: 'true' # TWO-PRODUCT GATE ONLY: complete research-backed PAID+FREE pair or do nothing
+      MAX_GUMROAD_PER_RUN: '2' # pair = one paid plus one free, never standalone
       MAX_PINS_PER_RUN: '3'
       PIN_LOOKAHEAD_HOURS: '72'
       DISPATCH_DRY_RUN: ${{ inputs.dry_run || 'false' }}
@@ -55,16 +56,16 @@ jobs:
       - name: Verify Gumroad seller token and store (read only)
         if: github.event_name == 'workflow_dispatch' && env.GUMROAD_ACCESS_TOKEN != ''
         run: python scripts/check_gumroad_connection.py
-      - name: Detect eligible new Gumroad drafts (read only)
+      - name: Detect complete research-backed PAID+FREE pairs (read only)
         id: gumroad_queue
-        if: env.LIVE_MODE == 'true' && env.GUMROAD_CREATE_DRAFTS == 'true' && env.DISPATCH_DRY_RUN != 'true'
-        run: python scripts/check_gumroad_queue.py
+        if: env.LIVE_MODE == 'true' && env.PAIRED_RELEASE_ENABLED == 'true' && env.DISPATCH_DRY_RUN != 'true'
+        run: python scripts/check_pair_queue.py
       - uses: actions/setup-go@v5
         if: steps.gumroad_queue.outputs.needs_cli == 'true'
         with:
           go-version: '1.25.4'
           cache: false
-      - name: Install pinned Gumroad CLI (only when new draft is READY)
+      - name: Install pinned Gumroad CLI (only when both paired products are verified READY)
         if: steps.gumroad_queue.outputs.needs_cli == 'true'
         run: |
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
