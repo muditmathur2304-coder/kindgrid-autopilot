@@ -1,9 +1,6 @@
 name: KindGrid KG-PAIR-002 Safe Resume
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/resume_pair002_existing.py
+  workflow_dispatch: # ARCHIVED / QA FAIL — disabled; never execute again
 permissions:
   contents: read
 concurrency:
@@ -11,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   resume:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # source QA revoked for BOTH products; no Gumroad/Buffer writes
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
