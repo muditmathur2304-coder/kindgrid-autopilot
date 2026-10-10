@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 SHEET_ID = "1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs"
-EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003"}
+EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003", "KGS-004", "KGS-005"}
 QA_VERSION = "KGS-QA-V2"
 QA_FIELDS = ("ASSET_OPEN", "VISUAL", "CONTENT", "COPY", "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH")
 
