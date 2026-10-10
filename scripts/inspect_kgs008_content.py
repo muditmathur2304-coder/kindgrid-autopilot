@@ -29,4 +29,6 @@ def brief(obj,depth=0):
 print("RICH_CONTENT_SHAPE "+json.dumps(brief(pages),ensure_ascii=False)[:13000])
 print("PAGE_KEYS "+json.dumps([list(p.keys()) for p in pages] if isinstance(pages,list) else list(pages.keys())))
 print("RICH_CONTENT_FULL_SHAPE "+json.dumps(pages,ensure_ascii=False)[:20000])
+print("SELLER_ALL_FILES "+json.dumps([{k:f.get(k) for k in ("id","display_name","name","filename","size","file_size","url")} for f in p.get("files") or []])[:15000])
+print("RICH_EMBED_IDS "+json.dumps([n.get("attrs",{}).get("id") for page in pages for n in (page.get("description") or {}).get("content",[]) if n.get("type")=="fileEmbed"]) if isinstance(pages,list) else "UNEXPECTED")
 print("READ_ONLY_NO_MUTATION")
