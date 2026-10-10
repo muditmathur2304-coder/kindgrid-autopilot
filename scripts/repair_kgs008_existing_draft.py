@@ -54,7 +54,7 @@ def main():
     from pypdf import PdfReader
     import re
     dtext="\n".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(pdf)).pages)
-    a.require("$19.22" in dtext and "-$22.05" in dtext and "$19.62" not in dtext,
+    a.require("$19.22" in dtext and ("-$22.05" in dtext or "\u2212$22.05" in dtext) and "$19.62" not in dtext,
               "Corrected arithmetic missing or stale in updated source")
     with ZipFile(io.BytesIO(excel)) as z:
         a.require("xl/workbook.xml" in z.namelist(),"Corrected spreadsheet broken")
