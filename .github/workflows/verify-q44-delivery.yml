@@ -1,13 +1,11 @@
 name: KindGrid Verify Q-44 Pinterest Delivery
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/verify_q44_once.py"
+  workflow_dispatch: # Archived one-time verifier; job disabled
 permissions:
   contents: read
 jobs:
   verify:
+    if: false # Q-44 already verified PUBLISHED; do not rerun
     runs-on: ubuntu-latest
     timeout-minutes: 4
     env:
