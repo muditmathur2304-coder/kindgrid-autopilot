@@ -1,6 +1,15 @@
 # KindGrid Autopilot — Current Operations and Safety
 Updated October 10, 2026. CREATOR = ChatGPT. PUBLISHER = GitHub Actions. Existing Google Drive/Sheets and Gumroad/Buffer integrations are retained.
 
+## New verified launch — October 10, 2026
+
+- KGS-005 **Subscription & Renewal Control - 7-Page Printable Kit** was created in ChatGPT from the previously owner-approved original premium workbook sample and independently QC-checked. Published at $4.00 USD after direct PDF/cover attachment verification and live public URL fetch: https://kindgridstudio.gumroad.com/l/subscription-renewal-control-kit
+- Source PDF: https://drive.google.com/file/d/1gx3d--n8IMn4jo6BVaNvizo6DzALd_Us/view ; cover https://drive.google.com/file/d/18BWsjXPWoRpDeJ4RLBvbPR3TvCmKVE83/view ; QA report https://docs.google.com/document/d/13vUsX4loTvatf5pzhROvxO0a2QO76e9eSY9aX3_4Q2k/edit
+- Pinterest Q-44 submitted through connected Buffer and confirmed SCHEDULED_BUFFER (ID 6ac98f24b07d37ac975846a0, due 2026-10-10 01:11 UTC / 06:41 IST), matched to actual public Gumroad URL. Its Pin image is https://drive.google.com/file/d/1gfPY17Op2xNXxQ_ljlLBEMDlk5XRiwbu/view ; QA report https://docs.google.com/document/d/1oCUoECqf8Skn3s0FEd_JVloyub-Zzdy6OmWrXxsCkRY/edit . Do not call it PUBLISHED until Buffer delivery is independently verified.
+- Owner-authorized one-time launch workflow succeeded at https://github.com/muditmathur2304-coder/kindgrid-autopilot/actions/runs/38011641880 . That workflow has been archived/disabled to prevent duplicates.
+- Existing published IDs KGS-001,KGS-002,KGS-004,KGS-005 are now protected; historical KGS-003 stays DRAFT_VERIFIED / QA FAIL. Q-43 remains PUBLISHED. Next truly new product ID **KGS-006**, next Pin **Q-45**. Never republish existing slugs.
+- The ChatGPT recurring creator task remains scheduled but has NOT yet proven unattended PDF/PNG creation and Drive upload; do not treat this manual interactive launch as proof of the scheduled creative pipeline.
+
 ## Active timetable
 
 - ChatGPT task KindGrid ChatGPT Production: registered and ENABLED. Every four hours at 00:45,04:45,08:45,12:45,16:45,20:45 IST, first scheduled run 08:45 on October 10. Use canonical creator manual: https://docs.google.com/document/d/1SCJjJOujkgcnTZp1VMdOe2M2X4geXUfElqiksXsuEoA/edit
