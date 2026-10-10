@@ -73,11 +73,22 @@ def make_free(store,row,source):
   a.require(PAID_URL in source["description"],"Free page lacks genuine PAID link")
   receipt("CREATE_FREE_METADATA_DRAFT_ATTEMPTED_DO_NOT_RETRY")
   store.patch("Gumroad Upload Queue",row,{"Upload Status":"UPLOADING","Last Attempt UTC":a.make_timestamp(),"Attempt Count":"3"})
-  created=a.gumroad_cli(["products","create","--draft","--name",row["Product Name"],
+  import subprocess,re
+  argv=["products","create","--draft","--name",row["Product Name"],
       "--price","0.00","--currency","usd","--type","digital",
       "--custom-permalink",FREE_SLUG,"--pay-what-you-want",
       "--description",source["description"],
-      "--custom-summary",source["summary"]])
+      "--custom-summary",source["summary"]]
+  process=subprocess.run(["gumroad"]+argv+["--json","--no-input"],
+                         text=True,capture_output=True,timeout=150)
+  if process.returncode!=0:
+   raw=(process.stderr or process.stdout or "")[:1800]
+   raw=raw.replace(os.getenv("GUMROAD_ACCESS_TOKEN","NONE_SECRET"),"[secret]")
+   raw=re.sub(r"(?i)(bearer|access_token|authorization)\\s*[:=]\\s*[^\\s,;]+",r"\\1=[redacted]",raw)
+   raw=re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}","[email-redacted]",raw)
+   print("KGS009_CREATE_ERROR_SAFE "+json.dumps({"exit":process.returncode,"message":raw[:700]}))
+   raise RuntimeError("Gumroad free create rejected; inspect seller state and safe diagnostic")
+  created=json.loads(process.stdout)
   raw=created.get("product") or {}
   pid=str(raw.get("id") or "")
   a.require(pid,"Free metadata product may exist without returned ID; do not retry")
