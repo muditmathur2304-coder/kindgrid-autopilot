@@ -27,7 +27,7 @@ for record in sample["pinterest"]:
 
 class PreflightTests(unittest.TestCase):
     def test_new_gumroad_004_is_ready(self):
-        ready_new = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "new-budget-reflection-kit"})
+        ready_new = dict(sample["gumroad"], **{"Product ID": "KGS-006", "Unique Slug": "new-budget-reflection-kit"})
         g = a.validate_gumroad(ready_new)
         self.assertEqual(g["slug"], "new-budget-reflection-kit")
         self.assertEqual(g["price"], "5")
@@ -69,17 +69,17 @@ class PreflightTests(unittest.TestCase):
             g = dict(sample["gumroad"], **{"Product ID": protected})
             with self.subTest(protected=protected), self.assertRaises(ValueError):
                 a.validate_gumroad(g)
-        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "ultimate-budget-planner"})
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-006", "Unique Slug": "ultimate-budget-planner"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
 
     def test_protected_test_slug_is_rejected(self):
-        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "kindgrid-autopilot-upload-test-20261009"})
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-006", "Unique Slug": "kindgrid-autopilot-upload-test-20261009"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
 
     def test_bad_drive_links_rejected(self):
-        g = dict(sample["gumroad"], **{"Product ID": "KGS-004", "Unique Slug": "new-budget-worksheet", "PDF Drive Link": "https://example.com/file.pdf"})
+        g = dict(sample["gumroad"], **{"Product ID": "KGS-006", "Unique Slug": "new-budget-worksheet", "PDF Drive Link": "https://example.com/file.pdf"})
         with self.assertRaises(ValueError):
             a.validate_gumroad(g)
 
@@ -194,7 +194,7 @@ class PreflightTests(unittest.TestCase):
         from datetime import timedelta
         old_time = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         item = dict(sample["gumroad"], **{
-            "Product ID": "KGS-004", "Unique Slug": "new-budget-printable",
+            "Product ID": "KGS-006", "Unique Slug": "new-budget-printable",
             "QA Audited UTC": old_time
         })
         with self.assertRaisesRegex(ValueError, "outdated"):
@@ -203,12 +203,12 @@ class PreflightTests(unittest.TestCase):
     def test_unverified_report_cannot_be_accepted(self):
         class FakeStore:
             def get_doc_text(self, doc):
-                return "ITEM ID: KGS-004\nQA VERSION: KGS-QA-V2\nRESULT: PASS\n"
+                return "ITEM ID: KGS-006\nQA VERSION: KGS-QA-V2\nRESULT: PASS\n"
         row = dict(sample["gumroad"], **{
-            "Product ID": "KGS-004", "Unique Slug": "budget-journal-v2",
+            "Product ID": "KGS-006", "Unique Slug": "budget-journal-v2",
         })
         with self.assertRaisesRegex(ValueError, "substantive"):
-            a.verify_qa_report(FakeStore(), row, "KGS-004")
+            a.verify_qa_report(FakeStore(), row, "KGS-006")
 
     def test_existing_gumroad_draft_not_autopublished(self):
         class FakeStore:
@@ -233,7 +233,7 @@ class PreflightTests(unittest.TestCase):
             def patch(self, sheet_name, row, values):
                 self.updates.append(values)
         row = dict(sample["gumroad"], **{
-            "Product ID": "KGS-004", "Unique Slug": "unique-original-budget-planner",
+            "Product ID": "KGS-006", "Unique Slug": "unique-original-budget-planner",
             "Upload Status": "READY",
         })
         store = FakeStore()
@@ -311,7 +311,7 @@ class PreflightTests(unittest.TestCase):
         class VerifiedReport:
             def get_doc_text(self, document_id):
                 fields = [
-                    "ITEM ID: KGS-004", "QA VERSION: KGS-QA-V2",
+                    "ITEM ID: KGS-006", "QA VERSION: KGS-QA-V2",
                     "RESULT: PASS", "ASSET_OPEN: PASS", "VISUAL: PASS",
                     "CONTENT: PASS", "COPY: PASS", "LINKS: PASS",
                     "LICENSE: PASS", "FACTS: PASS", "PRODUCT_MATCH: PASS",
@@ -322,9 +322,9 @@ class PreflightTests(unittest.TestCase):
                     "checked against the actual template deliverables. " * 3,
                 ]
                 return "\n".join(fields)
-        row = dict(sample["gumroad"], **{"Product ID": "KGS-004",
+        row = dict(sample["gumroad"], **{"Product ID": "KGS-006",
                                              "Unique Slug": "new-debt-planner-v2"})
-        a.verify_qa_report(VerifiedReport(), row, "KGS-004")
+        a.verify_qa_report(VerifiedReport(), row, "KGS-006")
         with self.assertRaisesRegex(ValueError, "item ID"):
             a.verify_qa_report(VerifiedReport(), row, "KGS-009")
 
@@ -343,7 +343,7 @@ class PreflightTests(unittest.TestCase):
             def patch(self, sheet_name, row, values):
                 self.events.append(values)
         row = dict(sample["gumroad"], **{
-            "Product ID": "KGS-004", "Unique Slug": "new-spending-reset-v2",
+            "Product ID": "KGS-006", "Unique Slug": "new-spending-reset-v2",
             "Upload Status": "READY"})
         store = FakeStore()
         def cli(args):
