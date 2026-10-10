@@ -1,0 +1,25 @@
+name: Read Only KGS008 Seller Reconcile
+on:
+  push:
+    branches: [main]
+    paths: ["scripts/reconcile_pair002_readonly.py"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install gumroad seller CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Inspect seller status without writes
+        run: python3 scripts/reconcile_pair002_readonly.py
