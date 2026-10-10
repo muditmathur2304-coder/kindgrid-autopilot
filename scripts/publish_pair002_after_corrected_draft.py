@@ -160,7 +160,7 @@ def create_only_free(store,row,item):
     return ident
 
 def run():
-    a.require(os.getenv("KINDGRID_PAIR002_OWNER_RESUME")=="true",
+    a.require(os.getenv("KINDGRID_OWNER_RELEASE_KGPAIR002")=="true",
               "This is a single owner-authorized reconciliation job")
     a.require(os.getenv("LIVE_MODE")=="true" and os.getenv("PAIRED_RELEASE_ENABLED")=="true",
               "Paired publishing control not enabled")
