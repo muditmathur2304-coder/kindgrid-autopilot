@@ -695,6 +695,19 @@ def main() -> int:
         verified_drafts = [r for r in gumrows if r.get("Upload Status") == "DRAFT_VERIFIED" and r.get("QA Verified (YES/NO)") == "YES"]
         ready_pin = [r for r in pinrows if r.get("Status") == "READY" and r.get("QA Verified (YES/NO)") == "YES"]
         print(f"Queue: {len(ready_gum)} new products, {len(ready_pin)} Pins")
+        if not ready_gum:
+            pending_product_states = {}
+            for item in gumrows:
+                state = str(item.get("Upload Status") or "UNKNOWN")
+                if state != "PUBLISHED":
+                    pending_product_states[state] = pending_product_states.get(state, 0) + 1
+            print("NO_PRODUCT_RELEASE: No genuinely QA-approved NEW Gumroad product is READY. "
+                  "The publisher cannot create new PDFs, descriptions or covers. "
+                  "Gemini must supply the next new KGS-005+ complete product and current QA report.")
+            print("PRODUCT_BACKLOG_STATES: " + str(pending_product_states))
+        if not ready_pin:
+            print("NO_PIN_RELEASE: No audited, approved Pinterest Pin is READY. "
+                  "Gemini must repair existing Pins or supply a distinct new item.")
         # Historical drafts cannot be recreated. Only the specifically known
         # KGS-003 draft may be released automatically *after* Gemini sets
         # RELEASE_READY with a fresh item-specific QA V2 audit.
