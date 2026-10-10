@@ -1,3 +1,9 @@
+# ARCHIVED — FOR HISTORICAL REFERENCE ONLY
+
+This was the old Gemini Spark creative workflow. KindGrid Studio has now appointed **ChatGPT** as content creator / quality reviewer. **Do not execute the old Gemini schedules or use this document as current publishing instructions.** See [CHATGPT_CREATION_HANDOFF.md](CHATGPT_CREATION_HANDOFF.md) and [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md). The GitHub publisher and existing historical product records remain intact.
+
+---
+
 # Gemini Spark — KindGrid Studio handoff (current QA-V2 policy)
 
 The owner should paste/execute this **single comprehensive master prompt** in Gemini Spark:
