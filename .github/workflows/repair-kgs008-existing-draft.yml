@@ -1,0 +1,45 @@
+name: Repair KGS008 Existing Draft Download Files
+on:
+  push:
+    branches: [main]
+    paths: [scripts/repair_kgs008_existing_draft.py]
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run tests
+        run: python -m unittest discover -s tests -q
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install pinned Gumroad CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Replace OLD files in EXISTING draft without publishing
+        run: python scripts/repair_kgs008_existing_draft.py
+      - name: Preserve proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kindgrid-kgs008-draft-file-replacement-proof
+          path: kindgrid-repair008-proof/
+          if-no-files-found: ignore
+          retention-days: 21
