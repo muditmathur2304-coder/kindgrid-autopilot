@@ -7,6 +7,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import autopilot as a
 from src import paired_release as pair
 
