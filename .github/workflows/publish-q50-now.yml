@@ -1,0 +1,29 @@
+name: KindGrid Q50 Live Paid Pin One-Off
+on:
+  push:
+    branches: [main]
+    paths: [scripts/publish_q50_only.py]
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+      Q50_ONE_TIME_OWNER_APPROVAL: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Submit only audited Q50 for already live paid KGS008
+        run: python scripts/publish_q50_only.py
