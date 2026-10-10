@@ -1,7 +1,8 @@
 """Read-only inspection of exact held KGS-008 Gumroad draft content and file embeds.
 NO uploads, edits or publishing. No personal details printed.
 """
-import json
+import json,sys
+sys.path.insert(0,'.')
 from src import autopilot as a
 SLUG="market-day-margin-guide"
 items=a.gumroad_cli(["products","list","--all"]).get("products",[])
