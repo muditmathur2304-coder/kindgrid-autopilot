@@ -66,7 +66,7 @@ class PairReleasePolicyTests(unittest.TestCase):
     def test_qa_failure_blocks_both_even_if_other_is_approved(self):
         paid, free = rows()
         free["QA Outcome"] = "FAIL"
-        with self.assertRaisesRegex(ValueError, "QA outcome"):
+        with self.assertRaisesRegex(ValueError, "QA Outcome"):
             pair.select_ready_pairs([paid, free])
 
     def test_missing_pair_id_refused(self):
