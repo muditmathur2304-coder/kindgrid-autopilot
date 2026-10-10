@@ -1,60 +1,41 @@
-# KindGrid Autopilot — GitHub publisher + Gemini Spark creator
+# KindGrid Autopilot — ChatGPT Creator + GitHub Publisher
 
-**Current design (Oct 2026):** Gemini Spark produces ORIGINAL digital products and Pinterest assets, performs item-specific QA V2, and writes complete approved handoffs to Google Sheets. GitHub Actions independently checks queues **every 2 hours** and may automatically publish new approved Gumroad products and schedule approved Pinterest Pins. Routine publishing uses no ChatGPT Work credits.
+**Current system (October 10, 2026):** ChatGPT is now the designated premium creative + QA producer. The existing GitHub Actions workflow handles the 2-hour Gumroad and Pinterest publishing checks. Connected Google Drive/Docs/Sheets hold actual finished assets, listings, QA evidence and the publishing queues. Gemini Spark is no longer an intended part of the active workflow.
 
-**This is a live publisher, not a promise of content output.** It does not create products. A scheduled check with no qualified items does nothing. Actual recurring execution, Gumroad auto-publish and full creative quality must be monitored; the first live new-product publication through this *new* workflow has not yet been observed.
+## Authoritative current instructions
 
-## Authoritative documentation
+- ChatGPT creation and handoff: [CHATGPT_CREATION_HANDOFF.md](CHATGPT_CREATION_HANDOFF.md)
+- Current safety rules and known product defects: [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md)
+- Canonical ChatGPT operational manual in Google Drive: https://docs.google.com/document/d/1SCJjJOujkgcnTZp1VMdOe2M2X4geXUfElqiksXsuEoA/edit
+- Owner-approved premium design references saved by ChatGPT to Google Drive: https://drive.google.com/drive/folders/15BnEZ8F5dZ13xDkaDM2cXp4vn5xBG-Ei
+- Business Dashboard: https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit
+- Publisher workflow: https://github.com/muditmathur2304-coder/kindgrid-autopilot/actions/workflows/publisher.yml
+- Prior GEMINI_HANDOFF.md and GEMINI_MASTER_PROMPT_QA_V2.md are archived historical materials; do NOT follow their creative schedules or use them as current instructions.
 
-- [Operations, schedules and safety switches](OPERATIONS_STATUS.md)
-- [Single Gemini Spark creative + audit master prompt](GEMINI_MASTER_PROMPT_QA_V2.md) (also [Google Doc](https://docs.google.com/document/d/1BZy_Pkc8QUe0PEnpCNr1B1aYuXa7jdTogHfprWf9lSk/edit))
-- [Gemini handoff schema](GEMINI_HANDOFF.md)
-- [Business Dashboard](https://docs.google.com/spreadsheets/d/1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs/edit) including the **Automation Cadence & QA** tab.
-- [Pinterest publishing planning spreadsheet](https://docs.google.com/spreadsheets/d/1Z-1AxByDq1wFTiKZGcSOjxuw208EWG7Mk2uGqW9HQjA/edit) (not directly bulk-upload ready when Media URL points to Google Drive).
+## Scheduled tasks
 
-## Exact timing
+**ChatGPT production and QA:** an actual ChatGPT recurring task named KindGrid ChatGPT Production has been CREATED and ENABLED; its first run is scheduled for October 10 2026 at 08:45 AM Asia/Kolkata and repeats every 4 hours (00:45 / 04:45 / 08:45 / 12:45 / 16:45 / 20:45 IST). Each run attempts one premium source package and fully truthful QA, saving to Drive/Sheets only where the scheduled-run tools support PDF/PNG creation and connector writes. The scheduled task has NOT yet proven it can execute PDF/PNG creation and Drive uploads unattended. Do not equate a registered reminder with successful unattended production.
 
-- Publisher cron: `17 */2 * * *` UTC (even UTC hours at :17). In IST: 05:47,07:47,...03:47. This avoids the busiest minute for GitHub scheduled jobs, but runs may still be delayed or skipped.
-- Gemini should maintain a separate four-hourly QA/creative schedule: **00:45,04:45,08:45,12:45,16:45,20:45 IST**. IMPORTANT: This schedule must be created and verified inside Gemini, not by the GitHub code.
-- Pinterest: three distinctive Pins per **US calendar day**, at 08:30,14:30,20:30 **America/New_York**. Correctly convert DST (EDT before Nov 1 2026, EST thereafter).
-- Exception: Q-02 previously scheduled for Oct 12 2026 14:28 EDT must remain unchanged.
+**GitHub automated publishing:** cron 17 */2 * * * UTC: every even UTC hour at minute 17 (IST 05:47 / 07:47 / ... / 03:47). GitHub checks the READY queue and publishes no more than one new thoroughly approved Gumroad product/run. Buffer schedules audited Pinterest Pins at most three per New York calendar day (08:30, 14:30, 20:30 America/New_York). Delays/missed GitHub scheduled runs remain possible.
 
-## Automated product publication without manual approvals
+**No new API/billing:** a consumer ChatGPT subscription is not an OpenAI API key. This repository does NOT invoke the ChatGPT app in GitHub Actions, does not contain a paid OpenAI API agent, and does not autonomously generate PDFs from GitHub. A separate API-based creator would require explicit authorization and potentially additional cost.
 
-GitHub reads `Gumroad Upload Queue`. A new KGS-004+ item is eligible ONLY if:
-- Its `Upload Status=READY` and `QA Verified (YES/NO)=YES` and the four **QA V2** fields are complete/current.
-- Its separate real PDF, PNG cover, description Google Doc and QA audit Doc can be opened with the Google publisher service account and pass machine validations.
-- The price is within safety limits, the unique slug is not present already, the listing has no obvious placeholder or deceptive text, and the QA evidence is item-specific.
+## Safe release conditions
 
-When eligible, the publisher downloads the PDF/cover, creates an **unpublished draft first**, rereads it to verify attachments, THEN publishes that *newly created* draft and verifies the public product URL. At most **one new product per 2-hour check**. No approval click is required after legitimate QA V2 PASS, but unverified content does not get published.
+- READY is earned only after a real PDF, cover, listing Docs and item-specific QA V2 document exist in Google Drive with verified IDs, permissions, actual renders and arithmetic/claim checks.
+- Gumroad listing copy uses exact BEGIN_GUMROAD_SUMMARY/DESCRIPTION and END_GUMROAD_SUMMARY/DESCRIPTION markers.
+- QA Doc must contain ITEM ID, QA VERSION KGS-QA-V2, RESULT PASS, eight separate evidence-backed QA checks and substantive item-specific EVIDENCE.
+- Existing published KGS-001, KGS-002, KGS-004 and Q-43 must never be recreated.
+- KGS-003 remains an unpublished defective historical draft on QA FAIL until actual PDF replacement has been proven; its historical auto-release code is disabled.
+- Q-02 remains an existing scheduled Pin; do not duplicate. Historic Q-01/Q-03 etc have specific issue holds.
+- Do not bypass platform-review states or re-trigger an uncertain seller/Buffer write.
+- GitHub live switch: repository variable AUTOPILOT_LIVE_ENABLED=true; stop switch: AUTOPILOT_PAUSED=true, or disable workflow in GitHub Actions. Manual workflow dispatch remains dry/read-only.
 
-Historical KGS-001 / KGS-002 remain protected. KGS-003's historical draft is held at `DRAFT_VERIFIED`, with QA revoked following independent PDF review. Its source calculations and representations must be corrected and its actual Gumroad delivery file REPLACED (not appended); the historical automatic release routine is disabled until content replacement is supported and proven. Do NOT set RELEASE_READY yet. The technical upload test must never be published or recreated.
+## Owner's remaining actions
 
-## Pinterest publication
+1. In Gemini Scheduled Actions, **disable the old KindGrid creative/QA schedule** and other duplicate content-creation schedules. ChatGPT cannot do that in Gemini.
+2. Let the first ChatGPT 08:45 IST scheduled run occur; review its actual result. It must produce and SAVE a file in Drive with correct links before declaring creator replacement fully functional.
+3. If scheduled ChatGPT does not have PDF/PNG file-making/Drive-writer tools, choose either manual ChatGPT batch creation followed by free GitHub auto-publishing OR a separately approved API-powered creator with possible additional billing. Do not silently pretend the automation works.
+4. Check both actual publishing outcomes and customer support/revenue periodically; no guaranteed product count or earnings.
 
-- Source of truth: `Publishing Queue` READY rows with QA=YES, new QA V2 evidence, and real separately linked PNG (not a ZIP).
-- Verifies correct real public Gumroad destination, board, original title/description, exact NY time and image format.
-- Uploads Pin graphics to Cloudinary and schedules through Buffer; checks Buffer response URL/ID.
-- Max **3 per US calendar day**, one per morning/afternoon/evening slot, and max 10 total queued in Buffer Free.
-- A Pin marked `SCHEDULED_BUFFER` has not necessarily been published yet. Only record `PUBLISHED` after external delivery verification.
-
-## Activation and emergency stop
-
-The scheduled workflow is LIVE only when repository Actions variable `AUTOPILOT_LIVE_ENABLED=true` and `AUTOPILOT_PAUSED` is not `true`. Manual `workflow_dispatch` remains read-only irrespective of the `dry_run` checkbox.
-
-To pause: GitHub Settings -> Secrets and variables -> Actions -> Variables -> set `AUTOPILOT_PAUSED=true`; or disable the workflow. No GitHub Secret value belongs in any document or chat.
-
-Current protected states: Q-02 scheduled once in Buffer; Q-01 still BLOCKED_TIME until reaudited; Q-03..Q-06 need QA V2; Q-07..Q-42 mostly lack individual ready images. New QA fields intentionally make older YES statuses insufficient. Strict quality and zero duplicates matter more than hitting a publishing quota.
-
-## Tooling
-
-- `src/autopilot.py`: publisher engine, source validators, QA/report gate, Gumroad CLI, Cloudinary, Buffer.
-- `scripts/check_gumroad_queue.py`: skip expensive Go/CLI install when there are no qualified product uploads/releases.
-- `.github/workflows/publisher.yml`: recurring publisher, manual safe previews and preflight checks.
-- `.github/workflows/quality-ci.yml`: syntax and regression tests on code changes.
-- `tests/test_autopilot.py`: local regression suite.
-- `scripts/gumroad_one_draft_pilot.py`, `scripts/pinterest_one_pin_pilot.py`: historical one-shot tests; do NOT rerun any LIVE pilot after its first successful creation.
-
-## Fundamental limitation
-
-No model can guarantee every creative is error-free. Gemini should render/open actual assets, fact-check and fix until confidence is justified. GitHub's own checks can verify technical properties and recorded audit evidence but cannot perfectly judge usefulness/design/content. Never mark a product published merely because a schedule was created, a link looks plausible, or a model said DONE. GitHub, Gumroad, Pinterest, Google and Buffer all have limits and outages; run failures must be reconciled, not blindly retried.
+For owner-approved visual quality, treat the two Drive reference product packages as the starting floor, not cookie-cutter templates.
