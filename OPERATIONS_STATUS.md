@@ -4,7 +4,7 @@ Last policy update: October 9, 2026. Source of truth: Google Sheets Business Das
 ## Live workflow
 
 - GitHub Actions workflow: `.github/workflows/publisher.yml`
-- Frequency: **every 2 hours** at even UTC hours 00:00,02:00,...22:00 (India: 05:30,07:30,...03:30, 12 runs per day). GitHub cron is best-effort; actual start may be delayed.
+- Frequency: **every 2 hours** at even UTC hours 00:17,02:17,...22:17 (India: 05:47,07:47,...03:47, 12 checks per day). Offset by 17 minutes to reduce top-of-hour GitHub delays. GitHub cron remains best-effort; runs can still be delayed or skipped.
 - Owner enable gate: `AUTOPILOT_LIVE_ENABLED=true` repository variable; pause gate `AUTOPILOT_PAUSED=true`. Without an enabled gate or while paused, scheduled runs are dry read-only checks.
 - Manual workflow dispatch ALWAYS remains read-only, even if its dry_run checkbox is false. Never use an old one-off live pilot again.
 - Each 2-hour run MAY publish **one genuinely new, quality-approved Gumroad product** and MAY schedule up to 3 Pins if eligible, while respecting one Pin per US morning/afternoon/evening window and Buffer Free 10-queued-item limit.
@@ -12,6 +12,10 @@ Last policy update: October 9, 2026. Source of truth: Google Sheets Business Das
 - `GUMROAD_AUTOPUBLISH` runs only when enabled and not paused; **no per-product human approval required** after the automated QA V2 gate. Draft creation with explicit `--draft`, verify PDF and cover, publish that newly created draft, read back published status, and independently check its public product URL.
 - Historical `KGS-003`: remains protected at `DRAFT_VERIFIED`; never recreate it. Current QA override: the actual original PDF has wrong snowball ranking, an impossible two-month payoff example, unsupported interest-savings claims and misleading debt-free milestones. KGS-003 is therefore DRAFT_VERIFIED / QA FAIL / RECHECK_REQUIRED. The existing uploader only updates listing copy; CLI --file APPENDS a file without replacing the old downloadable PDF. Its historical auto-release path is DISABLED pending a fully tested customer-content replacement workflow. Gemini must repair/audit the original PDF and verify the actual Gumroad deliverable; it must NOT mark RELEASE_READY merely because a corrected Drive PDF exists.
 - Existing KGS-001/KGS-002 and technical one-off upload test are never recreated, altered, or automatically republished. Q-02 already scheduled in Buffer and must never be submitted again.
+
+## October 10 content starvation diagnosis
+
+At the first verified overnight unattended run (2026-10-09 20:34 UTC / 2026-10-10 02:04 IST), LIVE_MODE was true and GitHub printed `Queue: 0 new products, 0 Pins`; Q-43 was confirmed published by Buffer. There was no new approved KGS-005+ product in the Google Sheet. Therefore, **Gumroad published nothing because Gemini had not provided another fully QA-approved package**. Do not claim that cron creates PDFs or that green runs always publish. The old Gemini instruction to finish ALL retrospective work before producing anything caused queue starvation. Its master prompt and Google Doc now require a parallel production lane, starting with distinct KGS-005+, and a reserve of 2–3 truthful QA-PASS new products when feasible. Actual Gemini Scheduled Action description must reflect the revised master; GitHub cannot edit Gemini task schedules directly.
 
 ## Gemini Spark orchestration — must be configured in Gemini
 
