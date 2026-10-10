@@ -1,0 +1,33 @@
+name: KindGrid Live Repair Diagnostics (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/diagnose_kindgrid_readonly.py
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-readonly-diagnostics
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      LIVE_MODE: 'false'
+      PIN_AUTOSCHEDULE: 'false'
+      PAIRED_RELEASE_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Independent read-only verification of Sheets, Buffer and existing Pins
+        run: python -m scripts.diagnose_kindgrid_readonly
