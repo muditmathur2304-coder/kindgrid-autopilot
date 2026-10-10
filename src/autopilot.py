@@ -741,6 +741,12 @@ def main() -> int:
                 store.patch("Gumroad Upload Queue", row, {
                     "Upload Status": "REVIEW", "Last Error": type(error).__name__})
                 print("KGS-003: REVIEW required; do not retry an uncertain release")
+        elif active and enabled("PAIRED_RELEASE_ENABLED"):
+            # Only paid+free pairs may go live. Older single-product
+            # creation path remains disabled by workflow configuration.
+            from src.paired_release import run_ready_pair_cycle
+            for line in run_ready_pair_cycle(store, gumrows):
+                print(line)
         else:
             for row in ready_gum[:int(os.getenv("MAX_GUMROAD_PER_RUN", "1"))]:
                 print(process_gumroad(store, row))
