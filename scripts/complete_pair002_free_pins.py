@@ -1,4 +1,4 @@
-"""Owner-authorized final KG-PAIR-002 FREE product upload and 3 unique Pinterest Pins.
+"""Owner-authorized final KG-PAIR-002 FREE product upload and 3 unique Pinterest Pins.\n\nPrevious test stopped BEFORE network calls because Google dependencies were not installed.
 
 The PAID product was already published and verified. The failed FREE create attempt
 was conclusively reconciled: no seller product with free slug exists.
