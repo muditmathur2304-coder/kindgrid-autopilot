@@ -3,6 +3,7 @@ No duplicate submission, no changes to existing Pins. Buffer shareNow delivers a
 """
 from __future__ import annotations
 import os,sys,time,json
+sys.path.insert(0,'.')
 from urllib.parse import urlparse
 from src import autopilot as a
 
