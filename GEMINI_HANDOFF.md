@@ -8,7 +8,7 @@ Do NOT follow old instructions from the previously weekly-only or six-hour, draf
 
 ## Frequency and ownership
 
-- GitHub publisher: every 2 hours (UTC even hours; IST odd half-hour). It may publish **new audited Gumroad products without user approval** and schedule approved Pinterest Pins.
+- GitHub publisher: every 2 hours at **UTC even hours :17**, i.e. **05:47,07:47,...03:47 IST**. It may publish **new audited Gumroad products without user approval** and schedule approved Pinterest Pins. Green executions with empty READY queues are not a successful product-generation cycle.
 - Gemini Spark: try scheduling independent creative + retrospective QA **every 4 hours, IST 00:45/04:45/08:45/12:45/16:45/20:45**. Schedule MUST actually be created inside Gemini; ChatGPT/GitHub changes do not modify Gemini schedules. Keep Sunday deep quality review.
 - Pinterest times: 08:30 / 14:30 / 20:30 America/New_York, 3 per US calendar day. Q-02 is already scheduled at 14:28 EDT on Oct 12 and must not be resubmitted.
 
