@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   finish:
-    if: false # Archived: attempted once; later recovery handled by separately gated Oct11 schedule\n    runs-on: ubuntu-latest
+    if: false # Archived: attempted once; later recovery handled by separately gated Oct11 schedule
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       KINDGRID_FINISH_KGPAIR002: 'true'
