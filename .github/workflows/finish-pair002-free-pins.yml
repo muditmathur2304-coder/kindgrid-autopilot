@@ -1,0 +1,47 @@
+name: Complete KGS009 Free + Pinterest Q48-Q50
+on:
+  push:
+    branches: [main]
+    paths: [scripts/complete_pair002_free_pins.py]
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KINDGRID_FINISH_KGPAIR002: 'true'
+      LIVE_MODE: 'true'
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Unit tests
+        run: python -m unittest discover -s tests -q
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Finalize EXISTING free draft or new free only if no seller match
+        run: python scripts/complete_pair002_free_pins.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kindgrid-free-and-pinterest-finalization-proof
+          path: kindgrid-free-pins-finish-proof/
+          if-no-files-found: ignore
+          retention-days: 21
