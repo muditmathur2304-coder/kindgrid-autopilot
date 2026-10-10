@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   submit_q51:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # Completed one-time Pin; user requested scheduled-only publishing
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
