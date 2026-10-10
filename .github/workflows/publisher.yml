@@ -1,7 +1,7 @@
 name: KindGrid Autopilot (2-hour quality-gated publisher)
 on:
   schedule:
-    - cron: '0 */2 * * *' # UTC every even hour; IST 05:30,07:30,...03:30
+    - cron: '17 */2 * * *' # UTC even hours at :17; IST 05:47,07:47,...03:47; avoids top-of-hour GitHub schedule congestion
   workflow_dispatch:
     inputs:
       dry_run:
