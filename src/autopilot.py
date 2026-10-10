@@ -704,6 +704,10 @@ def main() -> int:
             print("NO_PRODUCT_RELEASE: No genuinely QA-approved NEW Gumroad product is READY. "
                   "The publisher cannot create new PDFs, descriptions or covers. "
                   "Gemini must supply the next new KGS-005+ complete product and current QA report.")
+            if active:
+                print("::warning title=KindGrid has no new approved products::"
+                      "Publisher active but ZERO new READY products. "
+                      "Gemini must create and QA-approve KGS-005+ before another Gumroad release.")
             print("PRODUCT_BACKLOG_STATES: " + str(pending_product_states))
         if not ready_pin:
             print("NO_PIN_RELEASE: No audited, approved Pinterest Pin is READY. "
