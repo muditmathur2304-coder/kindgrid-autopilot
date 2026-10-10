@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   pin:
-    runs-on: ubuntu-latest
+    if: false # Archived: attempted once; later recovery handled by separately gated Oct11 schedule\n    runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
       GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
