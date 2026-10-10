@@ -1,9 +1,6 @@
 name: KindGrid KGS-005 One-Time Product + Pin
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/oneoff_kgs005_release.py"
+  workflow_dispatch: # Archived owner-authorized proof; job is deliberately disabled
 permissions:
   contents: read
 concurrency:
@@ -11,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # KGS-005/Q-44 completed once; never run again
     runs-on: ubuntu-latest
     timeout-minutes: 16
     env:
