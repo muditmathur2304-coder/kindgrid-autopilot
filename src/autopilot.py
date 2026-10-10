@@ -711,13 +711,13 @@ def main() -> int:
                 state = str(item.get("Upload Status") or "UNKNOWN")
                 if state != "PUBLISHED":
                     pending_product_states[state] = pending_product_states.get(state, 0) + 1
-            print("NO_PRODUCT_RELEASE: No genuinely QA-approved NEW Gumroad product is READY. "
+            print("NO_PRODUCT_RELEASE: No genuinely QA-approved PAID+FREE pair is READY. "
                   "The publisher cannot create new PDFs, descriptions or covers. "
-                  "ChatGPT creator must supply the next new KGS-005+ complete product and current QA report.")
+                  "ChatGPT creator must supply the next new KGS-008+ complete product and current QA report.")
             if active:
-                print("::warning title=KindGrid has no new approved products::"
-                      "Publisher active but ZERO new READY products. "
-                      "ChatGPT creator must create and QA-approve KGS-005+ before another Gumroad release.")
+                print("::warning title=KindGrid has no approved free+paid pair::"
+                      "Publisher active but ZERO fully audited PAID+FREE pairs. "
+                      "ChatGPT creator must create and QA-approve KGS-008+ before another Gumroad release.")
             print("PRODUCT_BACKLOG_STATES: " + str(pending_product_states))
         if not ready_pin:
             print("NO_PIN_RELEASE: No audited, approved Pinterest Pin is READY. "
