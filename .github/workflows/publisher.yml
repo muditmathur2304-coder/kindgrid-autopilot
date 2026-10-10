@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
+      PYTHONPATH: ${{ github.workspace }} # Ensure src/ resolves regardless of entrypoint
       GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
       BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
       BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
@@ -56,10 +57,9 @@ jobs:
       - name: Verify Gumroad seller token and store (read only)
         if: github.event_name == 'workflow_dispatch' && env.GUMROAD_ACCESS_TOKEN != ''
         run: python scripts/check_gumroad_connection.py
-      - name: Detect complete research-backed PAID+FREE pairs (read only)
+      - name: Check Python module imports and detect approved pairs (read only)
         id: gumroad_queue
-        if: env.LIVE_MODE == 'true' && env.PAIRED_RELEASE_ENABLED == 'true' && env.DISPATCH_DRY_RUN != 'true'
-        run: python scripts/check_pair_queue.py
+        run: python -m scripts.check_pair_queue
       - uses: actions/setup-go@v5
         if: steps.gumroad_queue.outputs.needs_cli == 'true'
         with:
@@ -71,4 +71,4 @@ jobs:
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Safe publishing pass
-        run: python src/autopilot.py
+        run: python -m src.autopilot
