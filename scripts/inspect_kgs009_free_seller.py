@@ -22,3 +22,11 @@ for p in a.gumroad_cli(["products","list","--all"]).get("products",[]):
       "customer_embed_ids":page_ids})
 print("KGS009_FREE_READONLY_RECONCILIATION "+json.dumps(matches))
 print("NO_WRITES_NO_DUPLICATES")
+
+# Read-only CLI option discovery: no create requests.
+import subprocess
+p=subprocess.run(["gumroad","products","create","--help"],capture_output=True,text=True)
+print("CREATE_HELP_EXIT",p.returncode)
+for line in p.stdout.splitlines():
+ if any(k in line.lower() for k in ("pay-what", "price", "draft","custom-summary","type","currency")):
+  print("CREATE_FLAG",line.strip()[:160])
