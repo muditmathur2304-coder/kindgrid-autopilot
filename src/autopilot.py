@@ -79,7 +79,7 @@ def validate_qa_metadata(row: dict) -> None:
 
 
 def verify_qa_report(store, row: dict, item_id: str) -> None:
-    """Independent existence/structure check for Gemini's signed QA record.
+    """Independent existence/structure check for the creator's evidence-backed QA record.
 
     This cannot prove visual/semantic perfection; it ensures auditable evidence
     exists and is specific to the item being released, never a stale placeholder.
@@ -100,7 +100,7 @@ def verify_qa_report(store, row: dict, item_id: str) -> None:
 
 
 def validate_gumroad(row: dict, *, existing_release: bool = False) -> dict:
-    require(str(row.get("QA Verified (YES/NO)", "")).upper() == "YES", "Gemini QA not approved")
+    require(str(row.get("QA Verified (YES/NO)", "")).upper() == "YES", "Creator QA not approved")
     validate_qa_metadata(row)
     required_status = "RELEASE_READY" if existing_release else "READY"
     require(row.get("Upload Status") == required_status, "Not ready for Gumroad")
@@ -171,16 +171,16 @@ def get_listing_copy(text: str) -> tuple[str, str]:
         if "BEGIN_GUMROAD_SUMMARY" in text and "END_GUMROAD_SUMMARY" in text:
             summary = text.split("BEGIN_GUMROAD_SUMMARY", 1)[1].split("END_GUMROAD_SUMMARY", 1)[0].strip()
     else:
-        # Existing KGS-003 format from Gemini, which uses numbered section headings.
+        # Historical KGS-003 format, which uses numbered section headings.
         m = re.search(r"2\.\s*Complete Gumroad Product Description\s*(.*?)\s*3\.\s*Recommended Gumroad Tags", text, re.S | re.I)
-        require(m is not None, "Gemini listing needs BEGIN/END description markers")
+        require(m is not None, "Customer listing needs BEGIN/END description markers")
         description = m.group(1).strip()
         s = re.search(r"1\.\s*Public Short Summary.*?\n\s*(.*?)\s*2\.\s*Complete Gumroad Product Description", text, re.S | re.I)
         summary = s.group(1).strip() if s else ""
     require(len(description) >= 250, "Listing description appears incomplete")
     require(len(description) <= 10000, "Listing description unusually long")
     require(not re.search(r"\ball sales.{0,40}final\b", description, re.I),
-            "Gemini must review absolute 'all sales final' language before publication")
+            "Creator must review absolute 'all sales final' language before publication")
     require(not re.search(r"\b(?:lorem ipsum|todo|tbd|paste here|your link|"
                           r"your product name|placeholder text)\b", description, re.I),
             "Customer-facing listing contains placeholder or unfinished content")
@@ -219,7 +219,7 @@ class GoogleStore:
                 for i, row in enumerate(values[1:], start=2)]
 
     def patch(self, sheet_name: str, row: dict, updates: dict) -> None:
-        """Write only operational fields; never overwrite Gemini's creative columns."""
+        """Write only operational fields; never overwrite ChatGPT creator-owned creative columns."""
         header = self.sheet.spreadsheets().values().get(
             spreadsheetId=SHEET_ID, range=f"'{sheet_name}'!1:1").execute().get("values", [[]])[0]
         missing = set(updates) - set(header)
@@ -453,7 +453,7 @@ def gumroad_create_draft(store: GoogleStore, config: dict) -> tuple[str, str]:
 
 
 def finalize_existing_draft(store: GoogleStore, row: dict) -> str:
-    """Publish ONLY the existing KGS-003 draft after Gemini's fresh V2 audit.
+    """Historical KGS-003 release remains disabled pending full source-file replacement verification.
 
     Its ID and edit URL must match the already verified seller-owned draft.
     Never create a replacement. This path is not a retry after an API error.
@@ -568,7 +568,7 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
     boards = {}
     slots = 0
     # Schedule no more than three Pins per NY calendar day, with at most one
-    # per morning/afternoon/evening slot, even if Gemini adds duplicate rows.
+    # per morning/afternoon/evening slot, even if the creator adds duplicate rows.
     booked = set()
     counts = {}
     if active:
@@ -703,17 +703,17 @@ def main() -> int:
                     pending_product_states[state] = pending_product_states.get(state, 0) + 1
             print("NO_PRODUCT_RELEASE: No genuinely QA-approved NEW Gumroad product is READY. "
                   "The publisher cannot create new PDFs, descriptions or covers. "
-                  "Gemini must supply the next new KGS-005+ complete product and current QA report.")
+                  "ChatGPT creator must supply the next new KGS-005+ complete product and current QA report.")
             if active:
                 print("::warning title=KindGrid has no new approved products::"
                       "Publisher active but ZERO new READY products. "
-                      "Gemini must create and QA-approve KGS-005+ before another Gumroad release.")
+                      "ChatGPT creator must create and QA-approve KGS-005+ before another Gumroad release.")
             print("PRODUCT_BACKLOG_STATES: " + str(pending_product_states))
         if not ready_pin:
             print("NO_PIN_RELEASE: No audited, approved Pinterest Pin is READY. "
-                  "Gemini must repair existing Pins or supply a distinct new item.")
+                  "ChatGPT creator must repair existing Pins or supply a distinct new item.")
         # Historical drafts cannot be recreated. Only the specifically known
-        # KGS-003 draft may be released automatically *after* Gemini sets
+        # Historical KGS-003 release is deliberately blocked, irrespective of creator QA
         # RELEASE_READY with a fresh item-specific QA V2 audit.
         if verified_drafts:
             print(f"Protected historical Gumroad drafts: {len(verified_drafts)}")
