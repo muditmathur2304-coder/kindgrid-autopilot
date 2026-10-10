@@ -32,3 +32,11 @@ jobs:
         run: python -m compileall -q src scripts tests
       - name: Run publishing safety tests
         run: python -m unittest discover -s tests -v
+      - name: Regression check scheduled publisher Python entrypoints (no external writes)
+        env:
+          LIVE_MODE: 'false'
+          PAIRED_RELEASE_ENABLED: 'true'
+          GOOGLE_SERVICE_ACCOUNT_JSON_B64: ''
+        run: |
+          python -m scripts.check_pair_queue
+          python -m src.autopilot
