@@ -1,0 +1,50 @@
+name: Publish Verified KGS008+009 and Schedule Q48-Q50
+on:
+  push:
+    branches: [main]
+    paths: [scripts/publish_pair002_after_corrected_draft.py]
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KINDGRID_OWNER_RELEASE_KGPAIR002: 'true'
+      LIVE_MODE: 'true'
+      PAIRED_RELEASE_ENABLED: 'true'
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Run tests
+        run: python -m unittest discover -s tests -q
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install Gumroad seller CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Publish held paid draft, then create freebie, then 3 Pins
+        run: python scripts/publish_pair002_after_corrected_draft.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kindgrid-kgs008-kgs009-q48-q50-live-proof
+          path: kindgrid-pair002-final-proof/
+          if-no-files-found: ignore
+          retention-days: 21
