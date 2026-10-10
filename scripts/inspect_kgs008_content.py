@@ -27,4 +27,6 @@ def brief(obj,depth=0):
   return out
  return obj if not isinstance(obj,str) or len(obj)<130 else obj[:120]
 print("RICH_CONTENT_SHAPE "+json.dumps(brief(pages),ensure_ascii=False)[:13000])
+print("PAGE_KEYS "+json.dumps([list(p.keys()) for p in pages] if isinstance(pages,list) else list(pages.keys())))
+print("RICH_CONTENT_FULL_SHAPE "+json.dumps(pages,ensure_ascii=False)[:20000])
 print("READ_ONLY_NO_MUTATION")
