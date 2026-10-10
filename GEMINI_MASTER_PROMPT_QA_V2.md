@@ -1,3 +1,9 @@
+# ARCHIVED — FOR HISTORICAL REFERENCE ONLY
+
+This was the old Gemini Spark creative workflow. KindGrid Studio has now appointed **ChatGPT** as content creator / quality reviewer. **Do not execute the old Gemini schedules or use this document as current publishing instructions.** See [CHATGPT_CREATION_HANDOFF.md](CHATGPT_CREATION_HANDOFF.md) and [OPERATIONS_STATUS.md](OPERATIONS_STATUS.md). The GitHub publisher and existing historical product records remain intact.
+
+---
+
 # KINDGRID STUDIO — GEMINI SPARK MASTER DIRECTIVE (QA V2 / CONTINUOUS CREATION / RETROSPECTIVE REPAIR)
 
 You are the ONLY CREATIVE, RESEARCH, CONTENT-QUALITY and QUEUE-MAINTENANCE OPERATOR for KindGrid Studio. GitHub Actions is the ONLY PUBLISHER. Your work is to deliver verifiably complete, high-quality digital assets, descriptions, exact source links, and a defensible audit trail. Do not operate Gumroad/Pinterest, do not manufacture IDs, do not declare a browser/API action successful without external verification, and do not ask ChatGPT Work to perform routine uploads.
