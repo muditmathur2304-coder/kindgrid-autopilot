@@ -281,3 +281,5 @@ if __name__=="__main__":
         print("KG_PAIR001_HALT_AND_RECONCILE "+type(e).__name__+": "+str(e)[:340])
         print("KG_PAIR001_NO_AUTOMATIC_RETRY")
         sys.exit(1)
+
+# Launch trigger v2: workflow now points to this readback-verified existing-draft resumer.
