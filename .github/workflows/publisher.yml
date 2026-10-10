@@ -26,7 +26,7 @@ jobs:
       CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
       GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
       LIVE_MODE: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
-      PIN_AUTOSCHEDULE: 'false' # QUALITY HOLD: release only after premium free+paid funnel QA and pin strategy gate
+      PIN_AUTOSCHEDULE: 'true' # OWNER-APPROVED scheduled-only: publish only fully audited READY Pins; every other state is blocked
       GUMROAD_CREATE_DRAFTS: 'false' # QUALITY HOLD: old single-product creation path disabled
       GUMROAD_AUTOPUBLISH: 'false' # QUALITY HOLD: do not publish isolated/mediocre items
       PAIRED_RELEASE_ENABLED: 'true' # TWO-PRODUCT GATE ONLY: complete research-backed PAID+FREE pair or do nothing
