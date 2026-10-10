@@ -38,7 +38,7 @@ jobs:
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Complete verified paid draft, publish linked freebie, schedule 3 pins
-        run: python scripts/oneoff_pair001_release.py
+        run: python scripts/oneoff_pair001_resume.py
       - name: Preserve record for uncertain-state reconciliation
         if: always()
         uses: actions/upload-artifact@v4
