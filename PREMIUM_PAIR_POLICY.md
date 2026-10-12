@@ -1,4 +1,4 @@
-# KindGrid Premium Paired Product and Pinterest Policy — October 10 2026
+> **12 OCT 2026 TOOL-FIRST OVERRIDE:** Read [AUTOMATED_TOOLS_STRATEGY.md](AUTOMATED_TOOLS_STRATEGY.md). New products move toward automated spreadsheet decision tools, not mandatory 16–35 page PDFs. This is a R&D/product-authoring change **only**, NOT permission to bypass the existing paired-release code's 16–55-page PDF gate or publisher QA. Existing PDF-first pair releases retain their exact validator and safety guards. Tool-first prototypes remain out of Gumroad Upload Queue until a separately tested release schema supports a formula-verified XLSX primary deliverable and any short guide. Existing KGS-006/007 acquisition pilot continues through 25 Oct.\n\n# KindGrid Premium Paired Product and Pinterest Policy — October 10 2026
 
 AUTHORITY: Supersedes all single-product volume goals, Gemini schedules, low-effort workbook requirements, and assumptions about rapid Pinterest traffic.
 
