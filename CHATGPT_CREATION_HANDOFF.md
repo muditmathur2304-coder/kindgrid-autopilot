@@ -1,4 +1,4 @@
-# KindGrid — ChatGPT Creator and QA Handoff: PREMIUM PAIRS ONLY
+> **CURRENT DIRECTIVE — 12 OCT 2026:** Read [AUTOMATED_TOOLS_STRATEGY.md](AUTOMATED_TOOLS_STRATEGY.md) BEFORE this historical PDF-first creator handoff. Maintain two lanes: (1) finish truthful Q-ready Pinterest creative for protected KGS-007/KGS-006 campaign to 25 Oct; (2) independently validate and improve the existing Market Day Decision Engine XLSX prototype at Drive ID 1wrpB6H7pq9H3wzCA0abDl8basltGtkKZ, not mass-generate new PDFs. Future tool-first offers need a true functioning XLSX with 12+ edge cases and cross-platform QA. **Do not append future prototype rows to Gumroad Upload Queue or set PAIR_READY**: current publisher hard-requires a 16–55-page paid PDF and treats XLSX only as bonus. No extra spend. Old contrary references below are historical.\n\n# KindGrid — ChatGPT Creator and QA Handoff: PREMIUM PAIRS ONLY
 
 **Current canonical guide:** https://docs.google.com/document/d/1IbyUI_KTdkuQdyutjIGHFp1xk1km7StMpEfbUiNeo44/edit and [PREMIUM_PAIR_POLICY.md](PREMIUM_PAIR_POLICY.md). Old 6–12-page paid template goals and solo uploads are REVOKED.
 
