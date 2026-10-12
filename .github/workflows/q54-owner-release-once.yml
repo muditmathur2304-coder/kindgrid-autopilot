@@ -1,0 +1,54 @@
+name: KindGrid Q-54 One-Time Owner-Requested Pin Release
+on:
+  push:
+    paths:
+      - 'ops/one_time_q54_20261012.txt'
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  q54:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+      LIVE_MODE: ${{ vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      PIN_AUTOSCHEDULE: 'true'
+      GUMROAD_CREATE_DRAFTS: 'false'
+      GUMROAD_AUTOPUBLISH: 'false'
+      PAIRED_RELEASE_ENABLED: 'false'
+      MAX_PINS_PER_RUN: '1'
+      PIN_LOOKAHEAD_HOURS: '72'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install requirements
+        run: python -m pip install -r requirements.txt
+      - name: Run publishing safety regressions
+        run: python -m unittest discover -s tests -v
+      - name: Only Q-54 must be READY and genuinely approved
+        run: |
+          python - <<'PY'
+          from src.autopilot import GoogleStore, validate_pin
+          from datetime import datetime, timezone
+          s = GoogleStore()
+          ready = [r for r in s.get_rows("Publishing Queue") if r.get("Status") == "READY"]
+          if len(ready) != 1 or ready[0].get("Queue ID") != "Q-54":
+              raise RuntimeError("Q-54 single-item release refused: unexpected READY queue; no mutations")
+          validate_pin(ready[0], datetime.now(timezone.utc), 72)
+          if ready[0].get("Product") != "KGS-008":
+              raise RuntimeError("Wrong product; no mutations")
+          print("Q-54 is the only approved READY Pin; publisher will independently check source media, working destination, capacity and duplicate slots")
+          PY
+      - name: Provider-guarded publish scheduling for Q-54
+        run: python -m src.autopilot
