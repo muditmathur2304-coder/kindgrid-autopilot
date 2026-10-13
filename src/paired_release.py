@@ -7,9 +7,12 @@ Its only mutation entrypoint is release_one_pair, called in LIVE cron mode.
 from __future__ import annotations
 
 import io
+import os
 import tempfile
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
 
@@ -238,10 +241,45 @@ def launch_pair_once(store, paid: dict, free: dict) -> list[str]:
     return outputs
 
 
+def published_today_count(gumrows: list[dict], *, now: datetime | None = None) -> int:
+    """Count confirmed PUBLIC listings in the America/New_York seller calendar day.
+
+    If the recorded completion timestamp is absent, it is not counted; a live
+    seller-side duplicate slug and draft verification still protects publication.
+    """
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("Publishing clock must be timezone-aware")
+    ny = ZoneInfo("America/New_York")
+    today = current.astimezone(ny).date()
+    count = 0
+    for row in gumrows:
+        if row.get("Upload Status") != "PUBLISHED":
+            continue
+        stamp = str(row.get("Last Updated UTC") or "").strip()
+        if not stamp:
+            continue
+        try:
+            value = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            if value.tzinfo and value.astimezone(ny).date() == today:
+                count += 1
+        except ValueError:
+            continue
+    return count
+
+
 def run_ready_pair_cycle(store, gumrows: list[dict]) -> list[str]:
     approved = select_ready_pairs(gumrows)
     if not approved:
         return ["PAIR_RELEASE_IDLE: No fully QA-approved PAID+FREE pair ready"]
-    # A single verified PAID+FREE launch maximum per cron execution.
+    # The owner asked for a target of 7 Gumroad LISTINGS / NY calendar day.
+    # Never create extras merely to hit it. A verified pair needs two free slots.
+    cap = max(2, min(7, int(os.getenv("GUMROAD_DAILY_LIMIT", "7"))))
+    today_count = published_today_count(gumrows)
+    if today_count + 2 > cap:
+        return [f"PAIR_RELEASE_DAILY_CAP: {today_count}/{cap} confirmed listings today; " +
+                "hold the complete paid+free pair instead of partially releasing it"]
+    # One independently audited pair maximum PER RUN; hourly checks can handle
+    # more pairs across the day, never bypassing asset or QA validation.
     paid, free = approved[0]
     return launch_pair_once(store, paid, free)
