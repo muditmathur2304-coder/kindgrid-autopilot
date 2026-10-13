@@ -1,0 +1,45 @@
+name: KindGrid CollectFlow KGS013 one-time owner-approved release
+on:
+  push:
+    paths:
+      - 'ops/collectflow_kgs013_release_20261013.txt'
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  seller-and-pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    env:
+      PYTHONPATH: \${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: \${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: \${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: \${{ secrets.BUFFER_API_KEY }}
+      BUFFER_PINTEREST_CHANNEL_ID: \${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: \${{ secrets.BUFFER_ORGANIZATION_ID }}
+      CLOUDINARY_URL: \${{ secrets.CLOUDINARY_URL }}
+      LIVE_MODE: \${{ vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      PIN_AUTOSCHEDULE: 'true'
+      PIN_LOOKAHEAD_HOURS: '36'
+      PIN_DAILY_LIMIT: '7'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Release regression tests
+        run: python -m unittest discover -s tests -v
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install pinned Gumroad CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: One-time verified seller and Pinterest release
+        run: python -m scripts.release_kgs013_once
