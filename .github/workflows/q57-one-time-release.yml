@@ -26,7 +26,7 @@ jobs:
       GUMROAD_AUTOPUBLISH: 'false'
       MAX_PINS_PER_RUN: '1'
       PIN_DAILY_LIMIT: '7'
-      PIN_LOOKAHEAD_HOURS: '16'
+      PIN_LOOKAHEAD_HOURS: '72'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
