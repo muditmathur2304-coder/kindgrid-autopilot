@@ -1,3 +1,5 @@
 ONE-TIME owner-approved KGS-013 CollectFlow launch trigger — 13 Oct 2026. Existing queue: KGS-013 RELEASE_APPROVED_ONCE, Q-58 AWAITING_GUMROAD. Do not duplicate or retry uncertain seller mutations. No extra spending; only release verified assets. This marker is immutable.
 
 Workflow-trigger reconciliation: repeat push trigger once because first commit showed NO seller-side attempt recorded (KGS-013 remains RELEASE_APPROVED_ONCE; attempt count zero). One-time script checks exact state and live duplicate slug before all seller writes; GitHub concurrency serializes runs. Do not create a second seller listing if an earlier workflow later resumes.
+
+Diagnostic release trigger after adding runner arrival checkpoint. Exact single-use approval and duplicate-slug gates remain binding; do not publish twice or auto-retry a seller mutation.
