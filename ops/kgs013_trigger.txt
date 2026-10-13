@@ -1,0 +1,1 @@
+KGS-013 CollectFlow Studio: one-time owner-authorized release on 2026-10-13. No repeated trigger. Must pass strict duplicate, daily maximum, correct customer file readback, approved QA and public Gumroad URL before creating Q-58 Pinterest post.
