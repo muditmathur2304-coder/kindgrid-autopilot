@@ -76,5 +76,34 @@ class PairReleasePolicyTests(unittest.TestCase):
             pair.select_ready_pairs([paid, free])
 
 
+    def test_seven_gumroad_listings_daily_count_new_york(self):
+        """Confirmed listings are counted in NY business day, not server UTC."""
+        day = datetime(2026, 10, 13, 18, 0, tzinfo=timezone.utc)
+        records = [
+            {"Upload Status": "PUBLISHED", "Last Updated UTC": "2026-10-13T04:14:52Z"},
+            {"Upload Status": "PUBLISHED", "Last Updated UTC": "2026-10-13T05:13:27Z"},
+            {"Upload Status": "PUBLISHED", "Last Updated UTC": "2026-10-13T20:00:00Z"},
+            {"Upload Status": "PUBLISHED", "Last Updated UTC": "2026-10-14T02:59:59Z"},
+            {"Upload Status": "REVIEW", "Last Updated UTC": "2026-10-13T15:00:00Z"},
+            {"Upload Status": "PUBLISHED", "Last Updated UTC": "2026-10-12T04:10:00Z"},
+        ]
+        self.assertEqual(pair.published_today_count(records, now=day), 4)
+
+    def test_daily_gumroad_cap_blocks_pair_without_any_upload(self):
+        """Even with a valid PAID+FREE pair, 6 earlier listings block 2 more."""
+        from unittest.mock import patch
+        paid, free = rows()
+        records = [paid, free] + [
+            {"Upload Status": "PUBLISHED",
+             "Last Updated UTC": datetime.now(timezone.utc).isoformat()}
+            for _ in range(6)
+        ]
+        with patch.dict(pair.os.environ, {"GUMROAD_DAILY_LIMIT": "7"}), \\
+             patch.object(pair, "launch_pair_once") as publisher:
+            msgs = pair.run_ready_pair_cycle(object(), records)
+        self.assertTrue(any("PAIR_RELEASE_DAILY_CAP" in m for m in msgs))
+        publisher.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
