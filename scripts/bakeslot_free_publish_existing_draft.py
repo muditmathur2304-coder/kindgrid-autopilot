@@ -29,7 +29,10 @@ def run():
     a.require(SLUG in (permalink,tail),"Actual Gumroad slug mismatch")
     files=product.get("files") or product.get("rich_content_files") or []
     cover=product.get("covers") or product.get("cover_images") or []
-    a.require(len(files)==2 and len(cover)>=1,"Exact two free downloadable files / cover not complete: HOLD")\n    seller_price=product.get("price")\n    if seller_price is not None:\n        a.require(str(seller_price) in {"0","0.0","0.00"},"Seller price is not zero; HOLD")
+    a.require(len(files)==2 and len(cover)>=1,"Exact two free downloadable files / cover not complete: HOLD")
+    seller_price=product.get("price")
+    if seller_price is not None:
+        a.require(str(seller_price) in {"0","0.0","0.00"},"Seller price is not zero; HOLD")
     # Check uploaded filenames when the CLI includes names; never assume the two files are correct if any declared filename differs.
     names=[str(x.get("name") or x.get("display_name") or x.get("filename") or x.get("file_name") or "") for x in files if isinstance(x,dict)]
     text=" ".join(names).lower()
