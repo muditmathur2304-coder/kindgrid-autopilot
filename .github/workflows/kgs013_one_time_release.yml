@@ -43,8 +43,26 @@ jobs:
               store.patch('Gumroad Upload Queue', rows[0], {'Last Error': 'RUNNER_PREFLIGHT_STARTED ' + make_timestamp()})
           print('OWNER_RELEASE_RUNNER_STARTED, not yet a seller write')
           PY
-      - name: Release regression tests
-        run: python -m unittest discover -s tests -v
+      - name: Release regression tests with safe failure classification
+        run: |
+          set +e
+          python -m unittest discover -s tests -v > /tmp/kgs-tests.log 2>&1
+          result=$?
+          cat /tmp/kgs-tests.log
+          if [ "$result" -ne 0 ]; then
+            python - <<'PY'
+          import re
+          from src.autopilot import GoogleStore, make_timestamp
+          text=open('/tmp/kgs-tests.log',encoding='utf-8',errors='replace').read()
+          names=re.findall(r'(?m)^(?:FAIL|ERROR):\s*([^\n]+)',text)[:4]
+          reason='; '.join(names) if names else 'test suite failed without named case'
+          store=GoogleStore()
+          row=next(r for r in store.get_rows('Gumroad Upload Queue') if r.get('Product ID')=='KGS-013')
+          if row.get('Upload Status')=='RELEASE_APPROVED_ONCE':
+              store.patch('Gumroad Upload Queue',row,{'Last Error':('RUNNER_TESTS_FAILED '+make_timestamp()+' '+reason)[:420]})
+          PY
+            exit "$result"
+          fi
       - name: Record regression test PASS checkpoint
         run: |
           python - <<'PY'
