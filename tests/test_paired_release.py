@@ -98,7 +98,7 @@ class PairReleasePolicyTests(unittest.TestCase):
              "Last Updated UTC": datetime.now(timezone.utc).isoformat()}
             for _ in range(6)
         ]
-        with patch.dict(pair.os.environ, {"GUMROAD_DAILY_LIMIT": "7"}), \\
+        with patch.dict(pair.os.environ, {"GUMROAD_DAILY_LIMIT": "7"}), \
              patch.object(pair, "launch_pair_once") as publisher:
             msgs = pair.run_ready_pair_cycle(object(), records)
         self.assertTrue(any("PAIR_RELEASE_DAILY_CAP" in m for m in msgs))
