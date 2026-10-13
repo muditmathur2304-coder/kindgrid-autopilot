@@ -27,7 +27,21 @@ def main():
         p=matches[0];ident=str(p.get("id") or "")
         files=p.get("files") or p.get("rich_content_files") or []
         covers=p.get("covers") or p.get("cover_images") or []
-        message="GUMROAD_RECONCILE_FOUND "+("PUBLISHED" if p.get("published") else "DRAFT")+" ID="+ident+" FILES="+str(len(files))+" COVER="+str(bool(covers))
+        control=next((x for x in data["products"] if
+            str(x.get("custom_permalink") or "")=="bakeslot-order-capacity-studio" or
+            str(x.get("short_url") or "").rstrip("/").endswith("/bakeslot-order-capacity-studio")), {})
+        known_files=control.get("files") or control.get("rich_content_files") or []
+        detail_response=requests.get("https://api.gumroad.com/v2/products/"+ident,
+            headers={"Authorization":"Bearer "+token,"Accept":"application/json"},timeout=30)
+        if detail_response.status_code==200:
+            detail=detail_response.json().get("product") or {}
+            detail_files=detail.get("files") or detail.get("rich_content_files") or []
+            interesting=[k for k in detail if any(word in k.lower() for word in ("file","content","cover","preview"))]
+            details=" DETAIL_FILES="+str(len(detail_files))+" DETAIL_FIELDS="+",".join(interesting[:8])
+        else:
+            details=" DETAIL_HTTP="+str(detail_response.status_code)
+        message=("GUMROAD_DRAFT_DETAIL ID="+ident+" LIST_FILES="+str(len(files))+
+                 " COVER="+str(bool(covers))+" KNOWN_LIVE_LIST_FILES="+str(len(known_files))+details)
     else:
         message="GUMROAD_RECONCILE_NOT_FOUND_IN_V2_LIST: check seller draft UI before retrying"
     if row.get("Upload Status")=="REVIEW":
