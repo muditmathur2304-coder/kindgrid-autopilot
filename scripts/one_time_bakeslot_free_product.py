@@ -36,7 +36,7 @@ def main():
     a.validate_image(cover)
     with zipfile.ZipFile(io.BytesIO(xlsx)) as z:
         a.require(z.testzip() is None,"Bad XLSX checksum")
-        tabs=[n for n in z.namelist() if re.fullmatch(r"xl/worksheets/sheet\\d+\\.xml",n)]
+        tabs=[n for n in z.namelist() if re.fullmatch(r"xl/worksheets/sheet\d+\.xml",n)]
         formulas=sum(z.read(n).count(b"<x:f") for n in tabs)
         media=[x for x in z.infolist() if x.filename.startswith("xl/media/")]
         a.require(len(tabs)==3 and formulas>=15 and len(media)>=3 and all(x.file_size>20000 for x in media),"Broken interactive workbook or zero-byte infographics")
