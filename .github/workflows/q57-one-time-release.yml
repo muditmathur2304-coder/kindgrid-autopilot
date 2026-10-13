@@ -1,0 +1,62 @@
+name: KindGrid Q-57 BakeBatch — one-time Pinterest release
+on:
+  push:
+    paths:
+      - 'ops/publish_q57_once.txt'
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  q57:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+      LIVE_MODE: ${{ vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      PIN_AUTOSCHEDULE: 'true'
+      PAIRED_RELEASE_ENABLED: 'false'
+      GUMROAD_CREATE_DRAFTS: 'false'
+      GUMROAD_AUTOPUBLISH: 'false'
+      MAX_PINS_PER_RUN: '1'
+      PIN_DAILY_LIMIT: '7'
+      PIN_LOOKAHEAD_HOURS: '16'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run publishing regressions
+        run: python -m unittest discover -s tests -v
+      - name: Confirm exactly Q-57 and the real linked product
+        run: |
+          python - <<'PY'
+          from src import autopilot as a
+          from datetime import datetime, timezone
+          store = a.GoogleStore()
+          pins = [r for r in store.get_rows("Publishing Queue") if r.get("Status") == "READY"]
+          if len(pins) != 1 or pins[0].get("Queue ID") != "Q-57":
+              raise RuntimeError("Unsafe queue: require exactly one READY pin Q-57")
+          row = pins[0]
+          if row.get("Product") != "KGS-012":
+              raise RuntimeError("Wrong product for Q-57")
+          products = [r for r in store.get_rows("Gumroad Upload Queue")
+                      if r.get("Product ID") == "KGS-012"]
+          if len(products) != 1 or products[0].get("Upload Status") != "PUBLISHED":
+              raise RuntimeError("KGS-012 is not independently published")
+          a.verify_qa_report(store, row, "Q-57")
+          a.validate_pin(row, datetime.now(timezone.utc), 16)
+          a.verify_public_product_url(row.get("Destination URL", ""))
+          print("Q-57 exact product and source verified; proceed under Buffer capacity and duplicate safety")
+          PY
+      - name: Schedule ONE provider-verified Pinterest Pin
+        run: python -m src.autopilot
