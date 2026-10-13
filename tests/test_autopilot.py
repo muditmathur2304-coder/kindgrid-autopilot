@@ -298,6 +298,72 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(any("time window already" in x for x in messages))
         client.assert_not_called()
 
+    def test_seven_distinct_pin_windows_allowed(self):
+        """The seventh slot is schedulable when six DIFFERENT slots are booked."""
+        record = dict(sample["pinterest"][0], **{
+            "Queue ID": "Q-88", "Status": "READY",
+            "Scheduled Date": "2026-10-12", "Time Window": "Late Evening",
+            "US Scheduled Time": "20:00 EDT",
+        })
+        six = ["Early Morning", "Morning", "Late Morning",
+               "Midday", "Afternoon", "Evening"]
+        class FakeStore:
+            def __init__(self):
+                self.updates = []
+            def get_rows(self, sheet_name):
+                return [{"Queue ID": f"Q-{j+1:02}", "Status": "PUBLISHED",
+                         "Scheduled Date": "2026-10-12", "Time Window": window}
+                        for j, window in enumerate(six)]
+            def get_bytes(self, fid, media):
+                return b"valid-image-standin"
+            def patch(self, sheet, row, values):
+                self.updates.append(values)
+        class FakeBuffer:
+            def boards(self):
+                return {record["Target Board"]: "board123"}
+            def scheduled(self):
+                return 2
+            def create(self, pin, url, board):
+                return {"id": "new-post-88", "metadata": {"url": pin["destination"]}}
+        store = FakeStore()
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true",
+                                        "PIN_DAILY_LIMIT": "7"}), \
+             patch.object(a, "BufferClient", return_value=FakeBuffer()), \
+             patch.object(a, "validate_image", return_value=(1000, 1500)), \
+             patch.object(a, "cloudinary_upload", return_value="https://res.cloudinary.com/example.png"), \
+             patch.object(a, "verify_qa_report", return_value=None), \
+             patch.object(a, "verify_public_product_url", return_value=None):
+            result = a.process_pins(store, [record], datetime(2026, 10, 10, tzinfo=timezone.utc))
+        self.assertTrue(any("scheduled in Buffer" in text for text in result))
+        self.assertEqual(store.updates[-1]["Status"], "SCHEDULED_BUFFER")
+
+    def test_eighth_pin_rejected_before_provider_mutation(self):
+        record = dict(sample["pinterest"][0], **{
+            "Queue ID": "Q-89", "Status": "READY",
+            "Scheduled Date": "2026-10-12", "Time Window": "Late Evening",
+            "US Scheduled Time": "20:00 EDT",
+        })
+        seven = ["Early Morning", "Morning", "Late Morning",
+                 "Midday", "Afternoon", "Late Afternoon", "Evening"]
+        class FakeStore:
+            def __init__(self):
+                self.updates = []
+            def get_rows(self, sheet_name):
+                return [{"Queue ID": f"Q-{j+1:02}", "Status": "PUBLISHED",
+                         "Scheduled Date": "2026-10-12", "Time Window": window}
+                        for j, window in enumerate(seven)]
+            def patch(self, sheet, row, fields):
+                self.updates.append(fields)
+        store = FakeStore()
+        with patch.dict(a.os.environ, {"LIVE_MODE": "true", "PIN_AUTOSCHEDULE": "true",
+                                        "PIN_DAILY_LIMIT": "7"}), \
+             patch.object(a, "BufferClient") as buffer, \
+             patch.object(a, "verify_qa_report", return_value=None):
+            result = a.process_pins(store, [record], datetime(2026, 10, 10, tzinfo=timezone.utc))
+        self.assertTrue(any("Daily Pinterest cap of 7" in text for text in result))
+        buffer.assert_not_called()
+        self.assertFalse(any(x.get("Status") == "SCHEDULED_BUFFER" for x in store.updates))
+
     def test_revoked_qa_document_never_passes_even_with_pass_labels(self):
         class ReissuedButRevoked:
             def get_doc_text(self, document_id):
