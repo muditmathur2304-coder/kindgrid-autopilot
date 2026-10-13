@@ -1,1 +1,3 @@
 Owner-authorized read-only Gumroad reconciliation for KGS013 REVIEW after one failed CLI seller upload. No product creation, no publish, no Pinterest post. Record only matching existing seller product identity and attachment presence in dashboard.
+
+Detail-only inspection pass: compare KGS013 draft against known KGS010 published files, GET product detail; absolutely no write to Gumroad, no duplicate product.
