@@ -1,0 +1,1 @@
+Read-only check: KGS-011 seller create returned nonzero without verified ID. Check seller products list for exact slug; record draft ID, cover and downloadable file counts. NO seller writes, NO Pinterest posting, NO duplicates, NO retries.
