@@ -1,0 +1,1 @@
+ONE-TIME owner-approved KGS-013 CollectFlow launch trigger — 13 Oct 2026. Existing queue: KGS-013 RELEASE_APPROVED_ONCE, Q-58 AWAITING_GUMROAD. Do not duplicate or retry uncertain seller mutations. No extra spending; only release verified assets. This marker is immutable.
