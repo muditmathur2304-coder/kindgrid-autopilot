@@ -24,5 +24,19 @@ def main():
                  "file_count":len(x.get("files") or x.get("rich_content_files") or []),
                  "cover_count":len(x.get("covers") or x.get("cover_images") or [])})
     print("BAKEBATCH_CANDIDATE_COUNT",found)
+    exact=[x for x in p if isinstance(x,dict) and (str(x.get("custom_permalink") or "")==TARGET)]
+    for x in exact:
+        ident=str(x.get("id") or "")
+        if not ident: continue
+        response=requests.get("https://api.gumroad.com/v2/products/"+ident,
+            headers={"Authorization":f"Bearer {token}","Accept":"application/json"},timeout=25)
+        response.raise_for_status()
+        details=response.json().get("product") or {}
+        print("EXACT_DRAFT_READBACK",{"id":details.get("id"),"name":details.get("name"),
+            "published":details.get("published"),"slug":details.get("custom_permalink"),
+            "file_count":len(details.get("files") or details.get("rich_content_files") or []),
+            "cover_count":len(details.get("covers") or details.get("cover_images") or []),
+            "file_fields_present": [key for key in ("files","rich_content_files","file","content")
+                                    if key in details], "keys_present": sorted(details.keys())[:40]})
     print("READ_ONLY_NO_WRITES")
 if __name__=="__main__":main()
