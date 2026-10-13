@@ -1,1 +1,3 @@
 One-time READ-ONLY exact seller-side check for BakeBatch after 2026-10-13 CLI nonzero. No upload, no retry, no edit, no publication and no secrets in logs. Product KGS-012 remains REVIEW until reconciled.
+
+Second read-only diagnostic: inspect product n8he_NX5xJRvM_gfyd1jPg== via Gumroad REST product GET. First diagnostic confirmed one existing UNPUBLISHED BakeBatch draft and 3 cover images, without reliable files field in list API. No seller mutations are allowed.
