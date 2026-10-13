@@ -3,3 +3,5 @@ ONE-TIME owner-approved KGS-013 CollectFlow launch trigger — 13 Oct 2026. Exis
 Workflow-trigger reconciliation: repeat push trigger once because first commit showed NO seller-side attempt recorded (KGS-013 remains RELEASE_APPROVED_ONCE; attempt count zero). One-time script checks exact state and live duplicate slug before all seller writes; GitHub concurrency serializes runs. Do not create a second seller listing if an earlier workflow later resumes.
 
 Diagnostic release trigger after adding runner arrival checkpoint. Exact single-use approval and duplicate-slug gates remain binding; do not publish twice or auto-retry a seller mutation.
+
+ONE-TIME checkpoints trigger: diagnostic only if earlier runs remain blocked before seller write. Existing exact RELEASE_APPROVED_ONCE state check and slug search reject duplicates. Concurrency serializes all release workflows.
