@@ -31,9 +31,11 @@ jobs:
       GUMROAD_CREATE_DRAFTS: 'false' # QUALITY HOLD: old single-product creation path disabled
       GUMROAD_AUTOPUBLISH: 'false' # QUALITY HOLD: do not publish isolated/mediocre items
       PAIRED_RELEASE_ENABLED: 'true' # TWO-PRODUCT GATE ONLY: complete research-backed PAID+FREE pair or do nothing
-      MAX_GUMROAD_PER_RUN: '2' # pair = one paid plus one free, never standalone
-      MAX_PINS_PER_RUN: '3'
-      PIN_LOOKAHEAD_HOURS: '72'
+      MAX_GUMROAD_PER_RUN: '2' # Pair uploader remains one audited PAID+FREE pair per run
+      GUMROAD_DAILY_LIMIT: '7' # Max new confirmed public listings / New York day, never a forced target
+      PIN_DAILY_LIMIT: '7' # Max distinct QA-approved Pinterest Pins / New York day
+      MAX_PINS_PER_RUN: '7' # Buffer Free still permits only 10 TOTAL scheduled posts per channel
+      PIN_LOOKAHEAD_HOURS: '36' # Rolling queue refills as Buffer posts leave its 10-post free queue
       DISPATCH_DRY_RUN: ${{ inputs.dry_run || 'false' }}
     steps:
       - uses: actions/checkout@v4
