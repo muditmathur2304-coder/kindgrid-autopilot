@@ -36,8 +36,12 @@ def main():
         if detail_response.status_code==200:
             detail=detail_response.json().get("product") or {}
             detail_files=detail.get("files") or detail.get("rich_content_files") or []
-            interesting=[k for k in detail if any(word in k.lower() for word in ("file","content","cover","preview"))]
-            details=" DETAIL_FILES="+str(len(detail_files))+" DETAIL_FIELDS="+",".join(interesting[:8])
+            detail_covers=detail.get("covers") or detail.get("cover_images") or []
+            names=[str((f.get("name") or f.get("filename") or f.get("display_name") or "?"))[:40]
+                   for f in detail_files if isinstance(f,dict)]
+            details=(" DETAIL_FILES="+str(len(detail_files))+" DETAIL_COVERS="+str(len(detail_covers))+
+                     " LABELS="+",".join(names[:2])+" PRICE="+str(detail.get("price"))+
+                     " PUBLISHED="+str(detail.get("published")))
         else:
             details=" DETAIL_HTTP="+str(detail_response.status_code)
         message=("GUMROAD_DRAFT_DETAIL ID="+ident+" LIST_FILES="+str(len(files))+
