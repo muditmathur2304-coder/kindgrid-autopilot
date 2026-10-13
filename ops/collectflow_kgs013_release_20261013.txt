@@ -7,3 +7,5 @@ Diagnostic release trigger after adding runner arrival checkpoint. Exact single-
 ONE-TIME checkpoints trigger: diagnostic only if earlier runs remain blocked before seller write. Existing exact RELEASE_APPROVED_ONCE state check and slug search reject duplicates. Concurrency serializes all release workflows.
 
 Safe CI-failure classifier trigger. No seller-side create has begun; record only failing test names, preserve single-use token gate and no duplicates.
+
+Approved owner release trigger after isolating 72-hour test fixture and preserving 36-hour runtime queue. No prior seller write; exact state/slug gating remains enforced.
