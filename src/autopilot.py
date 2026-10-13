@@ -577,8 +577,13 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
     client = None
     boards = {}
     slots = 0
-    # Schedule no more than three Pins per NY calendar day, with at most one
-    # per morning/afternoon/evening slot, even if the creator adds duplicate rows.
+    # Up to seven DISTINCT, genuinely QA-approved Pins per NY calendar day.
+    # An explicitly bounded limit is not a quota: fewer or zero is correct if
+    # original assets, permission, seller links or Buffer capacity are missing.
+    # Keep legacy Morning/Afternoon/Evening names for old scheduled records.
+    daily_limit = max(1, min(7, int(os.getenv("PIN_DAILY_LIMIT", "7"))))
+    allowed_windows = {"Early Morning", "Morning", "Late Morning", "Midday",
+                       "Afternoon", "Late Afternoon", "Evening", "Late Evening"}
     booked = set()
     counts = {}
     if active:
@@ -600,12 +605,12 @@ def process_pins(store: GoogleStore, rows: list[dict], now: datetime) -> list[st
                 continue
             calendar_day = row.get("Scheduled Date", "")
             slot = row.get("Time Window", "")
-            require(slot in {"Morning", "Afternoon", "Evening"},
-                    "Pin requires a recognised 3-per-day time window")
+            require(slot in allowed_windows,
+                    "Pin requires a recognised Pinterest posting time window")
             require((calendar_day, slot) not in booked,
                     "This US daily Pinterest time window already has a scheduled or published Pin")
-            require(counts.get(calendar_day, 0) < 3,
-                    "Three Pinterest Pins already booked for this US calendar day")
+            require(counts.get(calendar_day, 0) < daily_limit,
+                    f"Daily Pinterest cap of {daily_limit} already booked for this US calendar day")
             if client is None:
                 client = BufferClient()
                 boards = client.boards()
@@ -761,7 +766,7 @@ def main() -> int:
             print("PINTEREST_PAUSED: Unresolved Pin state(s): " + ", ".join(uncertain_pins[:10]))
             print("No further Pins scheduled until Buffer/dashboard statuses are reconciled.")
         else:
-            for line in process_pins(store, ready_pin[:int(os.getenv("MAX_PINS_PER_RUN", "3"))], now):
+            for line in process_pins(store, ready_pin[:int(os.getenv("MAX_PINS_PER_RUN", "7"))], now):
                 print(line)
         return 0
     except Exception as error:
