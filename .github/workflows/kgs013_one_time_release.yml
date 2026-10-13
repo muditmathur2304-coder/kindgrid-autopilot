@@ -44,6 +44,8 @@ jobs:
           print('OWNER_RELEASE_RUNNER_STARTED, not yet a seller write')
           PY
       - name: Release regression tests with safe failure classification
+        env:
+          PIN_LOOKAHEAD_HOURS: '72' # fixture window only; actual publication remains 36 hours
         run: |
           set +e
           python -m unittest discover -s tests -v > /tmp/kgs-tests.log 2>&1
