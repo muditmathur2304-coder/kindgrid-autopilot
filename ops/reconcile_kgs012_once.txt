@@ -1,0 +1,1 @@
+One-time READ-ONLY exact seller-side check for BakeBatch after 2026-10-13 CLI nonzero. No upload, no retry, no edit, no publication and no secrets in logs. Product KGS-012 remains REVIEW until reconciled.
