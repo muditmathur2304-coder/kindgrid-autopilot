@@ -1,0 +1,43 @@
+name: KindGrid KGS-012 BakeBatch — single verified release
+on:
+  push:
+    paths:
+      - 'ops/publish_kgs012_once.txt'
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  kgs012:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      LIVE_MODE: ${{ vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install Python requirements
+        run: python -m pip install -r requirements.txt
+      - name: Run full fail-closed unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Confirm authenticated seller and Google services without mutations
+        run: |
+          test -n "$GUMROAD_ACCESS_TOKEN" || (echo 'Missing seller token' && exit 1)
+          python -m scripts.check_gumroad_connection
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install pinned Gumroad CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Publish exactly one KGS-012, no automatic retries
+        run: python -m scripts.one_time_kgs012_release
