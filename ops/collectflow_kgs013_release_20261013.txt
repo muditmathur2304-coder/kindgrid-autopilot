@@ -5,3 +5,5 @@ Workflow-trigger reconciliation: repeat push trigger once because first commit s
 Diagnostic release trigger after adding runner arrival checkpoint. Exact single-use approval and duplicate-slug gates remain binding; do not publish twice or auto-retry a seller mutation.
 
 ONE-TIME checkpoints trigger: diagnostic only if earlier runs remain blocked before seller write. Existing exact RELEASE_APPROVED_ONCE state check and slug search reject duplicates. Concurrency serializes all release workflows.
+
+Safe CI-failure classifier trigger. No seller-side create has begun; record only failing test names, preserve single-use token gate and no duplicates.
