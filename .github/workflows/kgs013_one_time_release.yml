@@ -45,6 +45,15 @@ jobs:
           PY
       - name: Release regression tests
         run: python -m unittest discover -s tests -v
+      - name: Record regression test PASS checkpoint
+        run: |
+          python - <<'PY'
+          from src.autopilot import GoogleStore, make_timestamp
+          s=GoogleStore(); row=next(r for r in s.get_rows('Gumroad Upload Queue') if r.get('Product ID')=='KGS-013')
+          if row.get('Upload Status')=='RELEASE_APPROVED_ONCE':
+              s.patch('Gumroad Upload Queue',row,{'Last Error':'RUNNER_TESTS_PASSED '+make_timestamp()})
+          print('TESTS_PASSED; no Gumroad write attempted')
+          PY
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.4'
@@ -53,5 +62,14 @@ jobs:
         run: |
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Record CLI installed checkpoint
+        run: |
+          python - <<'PY'
+          from src.autopilot import GoogleStore, make_timestamp
+          s=GoogleStore(); row=next(r for r in s.get_rows('Gumroad Upload Queue') if r.get('Product ID')=='KGS-013')
+          if row.get('Upload Status')=='RELEASE_APPROVED_ONCE':
+              s.patch('Gumroad Upload Queue',row,{'Last Error':'RUNNER_SELLER_CLI_INSTALLED '+make_timestamp()})
+          print('GUMROAD_CLI_INSTALLED; no seller write attempted yet')
+          PY
       - name: One-time verified seller and Pinterest release
         run: python -m scripts.release_kgs013_once
