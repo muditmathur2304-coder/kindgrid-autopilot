@@ -6,6 +6,7 @@ from src import autopilot as a
 from src.paired_release import published_today_count
 ID="KGS-013";SLUG="collectflow-invoice-followup-control"
 def run():
+ a.require(a.enabled("LIVE_MODE"),"Seller live publishing is paused by owner")
  s=a.GoogleStore()
  rows=s.get_rows("Gumroad Upload Queue")
  matches=[r for r in rows if r.get("Product ID")==ID]
