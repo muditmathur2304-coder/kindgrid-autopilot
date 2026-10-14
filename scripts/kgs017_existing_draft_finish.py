@@ -41,9 +41,11 @@ def run():
     draft=seller_state()
     a.require(draft.get("published") is False and draft.get("name")==g.NAME and
               draft.get("custom_permalink")==g.SLUG,"Expected exact original unpublished product")
-    a.require(len(draft.get("files") or draft.get("rich_content_files") or [])==0,
-              "Existing draft already contains files: reconcile before adding more")
-    b=a.BufferClient(); boards=b.boards()
+    # Read-only seller audit confirmed exactly ONE existing buyer attachment and cover.
+    # Never issue a second file upload; verify the existing one before publication.
+    existing_files=draft.get("files") or draft.get("rich_content_files") or []
+    a.require(len(existing_files)==1,"Draft must contain exactly one existing customer download")
+    b=a.BufferClient();boards=b.boards()
     a.require(g.BOARD in boards and b.scheduled()<10,"No correct Pinterest board or Buffer queue full")
     archive=g.make_assets()
     cover=g.EVIDENCE/"KGS017_Gumroad_Cover.png"
@@ -51,33 +53,23 @@ def run():
     a.require(archive.exists() and archive.stat().st_size>10000,"Original offline package incomplete")
     a.validate_image(cover.read_bytes())
     a.validate_image(pin.read_bytes())
-    g.receipt("RECOVERY_PREFLIGHT_SAME_DRAFT_ZERO_FILES",seller_id=EXACT_ID,zip_sha256=hashlib.sha256(archive.read_bytes()).hexdigest())
-    store.patch("Gumroad Upload Queue",row,{"Upload Status":"EXISTING_DRAFT_ATTACHING",
-               "Last Attempt UTC":a.make_timestamp(),"Attempt Count":"2"})
-    g.receipt("EXISTING_DRAFT_FILE_MUTATION_ATTEMPTED_ONCE")
-    try:
-        a.gumroad_cli(["products","update",EXACT_ID,
-           "--file",str(archive),
-           "--cover-image",str(cover),
-           "--thumbnail",str(cover),
-           "--description",g.DESCRIPTION,"--custom-summary",g.SUMMARY])
-        draft=seller_state()
-        files=draft.get("files") or draft.get("rich_content_files") or []
-        covers=draft.get("covers") or draft.get("cover_images") or []
-        a.require(draft.get("published") is False and draft.get("name")==g.NAME,
-                  "Seller draft identity changed after attachment")
-        a.require(len(files)==1 and int(files[0].get("size") or -1)==archive.stat().st_size,
-                  "The exact one-file customer ZIP was not verified; do not publish")
-        a.require(bool(covers),"Gumroad cover not attached")
-        g.receipt("SELLER_DRAFT_ZIP_AND_COVER_VERIFIED",seller_id=EXACT_ID,zip_bytes=archive.stat().st_size)
-        store.patch("Gumroad Upload Queue",row,{"Upload Status":"DRAFT_VERIFIED","Gumroad Live URL":EDITOR})
-    except Exception as exc:
-        fresh=single(store,"Gumroad Upload Queue","Product ID",g.PID)
-        store.patch("Gumroad Upload Queue",fresh,{"Upload Status":"REVIEW",
-          "Gumroad Live URL":EDITOR,"Last Error":(type(exc).__name__+": "+str(exc))[:400],
-          "Last Updated UTC":a.make_timestamp()})
-        g.receipt("ATTACHMENT_UNCERTAIN_DO_NOT_REPEAT",error_type=type(exc).__name__)
-        raise
+    a.require(int(existing_files[0].get("size") or -1)==archive.stat().st_size,
+              "Gumroad customer file size differs from independently recreated original ZIP")
+    covers=draft.get("covers") or draft.get("cover_images") or []
+    a.require(len(covers)>=1,"Gumroad draft cover missing")
+    rich=a.gumroad_cli(["products","content","get",EXACT_ID])
+    pages=rich if isinstance(rich,list) else (rich.get("rich_content") or []) if isinstance(rich,dict) else []
+    embeds=[str(node.get("attrs",{}).get("id") or "") for part in pages
+         for node in (part.get("description") or {}).get("content") or []
+         if node.get("type")=="fileEmbed"]
+    a.require(embeds==[str(existing_files[0].get("id") or "")],"Buyer ZIP not linked as a delivery file")
+    g.receipt("EXACT_EXISTING_CUSTOMER_ZIP_AND_COVER_VERIFIED",
+              seller_id=EXACT_ID,zip_bytes=archive.stat().st_size,
+              zip_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
+              file_id=embeds[0])
+    store.patch("Gumroad Upload Queue",row,{"Upload Status":"DRAFT_VERIFIED",
+       "Gumroad Live URL":EDITOR,"Last Attempt UTC":a.make_timestamp(),
+       "Attempt Count":"2","Last Error":""})
     g.receipt("GUMROAD_PUBLISH_ATTEMPTED_ONCE")
     try:
         a.gumroad_cli(["products","publish",EXACT_ID])
