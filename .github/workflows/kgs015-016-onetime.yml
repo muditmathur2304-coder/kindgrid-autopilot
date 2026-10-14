@@ -1,3 +1,46 @@
-name: KindGrid Artist Release
-on: workflow_dispatch
-jobs: {}
+name: KindGrid Artist Paid Free Launch
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/release_artist_pair_015_016.py
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      KINDGRID_ARTIST_ONETIME: 'true'
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -q
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: python scripts/release_artist_pair_015_016.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kgs015-016-release-receipt
+          path: kindgrid-artist-release-receipt/
+          retention-days: 21
+          if-no-files-found: ignore
