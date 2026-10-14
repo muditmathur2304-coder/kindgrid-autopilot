@@ -1,9 +1,6 @@
 name: KindGrid Art Commission Pair One-Time Release
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/owner_art_pair_oneoff.py
+  workflow_dispatch: # Archived completed one-time release
 permissions:
   contents: read
 concurrency:
@@ -11,6 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
+    if: false # KGS-015 / KGS-016 / Q-61 completed; duplicates prohibited
     runs-on: ubuntu-latest
     timeout-minutes: 16
     env:
