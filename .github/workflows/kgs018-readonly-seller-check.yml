@@ -17,5 +17,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install requests
+      - run: python -m pip install requests pypdf Pillow 'reportlab>=4,<5' google-api-python-client google-auth cloudinary
       - run: python scripts/kgs018_readonly_seller_check.py
