@@ -51,8 +51,9 @@ def run():
     cover=g.EVIDENCE/"KGS017_Gumroad_Cover.png"
     pin=g.EVIDENCE/"Q62_Pinterest_Original.png"
     a.require(archive.exists() and archive.stat().st_size>10000,"Original offline package incomplete")
-    a.validate_image(cover.read_bytes())
-    a.validate_image(pin.read_bytes())
+    from PIL import Image
+    a.require(Image.open(cover).size==(1600,900),"Storefront cover dimensions mismatch")
+    a.require(Image.open(pin).size==(1000,1500),"Pinterest 2:3 dimensions mismatch")
     a.require(int(existing_files[0].get("size") or -1)==archive.stat().st_size,
               "Gumroad customer file size differs from independently recreated original ZIP")
     covers=draft.get("covers") or draft.get("cover_images") or []
