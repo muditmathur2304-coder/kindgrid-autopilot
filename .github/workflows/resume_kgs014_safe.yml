@@ -1,15 +1,13 @@
 name: KGS014 Resume Verified Existing Draft + Q59 Pinterest
 on:
-  push:
-    branches: [main]
-    paths: [scripts/resume_kgs014_existing_draft.py]
+  workflow_dispatch: # Archived completed one-time proof; disabled job
 permissions: {contents: read}
 concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
 jobs:
   resume:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # KGS014 and Q59 were successfully published; never rerun
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
