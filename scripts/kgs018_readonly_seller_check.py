@@ -31,3 +31,5 @@ from scripts import kgs018_scopepulse_once as g
 z=g.build_assets()
 print("KGS018_GENERATED_ORIGINAL_ZIP_BYTES",z.stat().st_size)
 print("KGS018_GUIDE_PDF_BYTES",(g.EVIDENCE/"ScopePulse_8_Page_Field_Guide.pdf").stat().st_size)
+
+# Keep this diagnostic read-only; never trigger seller mutations from it.
