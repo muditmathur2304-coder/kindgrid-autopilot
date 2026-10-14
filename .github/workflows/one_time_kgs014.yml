@@ -1,0 +1,52 @@
+name: KindGrid KGS014 FREE Invoice Starter + Q59 Pin (One Time)
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/one_time_kgs014_free_and_pin.py
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KINDGRID_OWNER_RELEASE_KGS014: 'true'
+      LIVE_MODE: 'true'
+      PYTHONPATH: ${{ github.workspace }}
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run safety tests
+        run: python -m unittest discover -s tests -q
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          cache: false
+      - name: Install verified Gumroad seller CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Publish one free KGS014 and post one Pinterest Q59
+        run: python scripts/one_time_kgs014_free_and_pin.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kgs014-one-time-release-proof
+          path: kindgrid-kgs014-release-proof/
+          retention-days: 21
+          if-no-files-found: ignore
