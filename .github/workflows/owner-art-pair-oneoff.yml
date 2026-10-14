@@ -1,0 +1,46 @@
+name: KindGrid Art Commission Pair One-Time Release
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/owner_art_pair_oneoff.py
+permissions:
+  contents: read
+concurrency:
+  group: kindgrid-publisher
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      KINDGRID_ONEOFF_ART_AUTHORIZED: 'true'
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+      BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+      BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+      BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+      CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install validated dependencies
+        run: python -m pip install -r requirements.txt
+      - uses: actions/setup-go@v5
+        with: {go-version: '1.25.4', cache: false}
+      - name: Install Gumroad CLI
+        run: |
+          go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Owner-approved one-time Gumroad free+paid release and Pinterest submission
+        run: python scripts/owner_art_pair_oneoff.py
+      - name: Preserve exact receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kindgrid-art-pair-oneoff-receipt
+          path: kindgrid-art-pair-proof/
+          retention-days: 21
+          if-no-files-found: ignore
