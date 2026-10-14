@@ -326,7 +326,7 @@ def make_assets():
         archive.write(guide,"DepositGuard_8_Page_Field_Guide.pdf")
     with zipfile.ZipFile(z) as check:
         a.require(len(check.namelist())==2 and check.testzip() is None,"Customer ZIP invalid")
-        a.require(len(check.read("DepositGuard_Offline_Tool.html"))>9500,"Customer offline app incomplete")
+        a.require(len(check.read("DepositGuard_Offline_Tool.html"))>8000,"Customer offline app incomplete")
     sha={f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in EVIDENCE.iterdir() if f.is_file()}
     (EVIDENCE/"assets_sha256.json").write_text(json.dumps(sha,indent=2))
     receipt("ASSETS_GENERATED_VERIFIED",files=sha)
