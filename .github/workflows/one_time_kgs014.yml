@@ -1,9 +1,6 @@
 name: KindGrid KGS014 FREE Invoice Starter + Q59 Pin (One Time)
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/one_time_kgs014_free_and_pin.py
+  workflow_dispatch: # Archived completed one-time proof; disabled job
 permissions:
   contents: read
 concurrency:
@@ -11,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.repository == 'muditmathur2304-coder/kindgrid-autopilot'
+    if: false # KGS014 and Q59 were successfully published; never rerun
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
