@@ -1,5 +1,7 @@
 """One-time owner-requested KindGrid artist quote PAID+FREE release and one Pinterest Pin.
 
+Permission-only rerun: prior run stopped before seller mutation (paid listing Doc HTTP 403); both listing Docs have now been shared as reader to the publisher service account.
+
 Never rerun after any seller write; the receipts and seller state must be reconciled.
 """
 from __future__ import annotations
