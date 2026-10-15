@@ -69,18 +69,18 @@ def art():
     d.text((75,170),"MOVING COST REALITY",font=fonts(25,True),fill=RUST)
     y=wrapped(d,75,250,"The moving quote is not your move-in budget.",850,57,True)+50
     d.text((75,y),"ILLUSTRATIVE LOGISTICS QUOTES",font=fonts(24,True),fill=INK)
-    y+=75
+    y+=64
     for x,lab,amt in [(73,"DIY + TRUCK","$1,110"),(516,"FULL SERVICE","$1,875")]:
-        d.rounded_rectangle((x,y,x+414,y+232),radius=28,fill=WHITE)
+        d.rounded_rectangle((x,y,x+414,y+208),radius=28,fill=WHITE)
         d.text((x+22,y+28),lab,font=fonts(25,True),fill=INK)
         d.text((x+22,y+97),amt,font=fonts(55,True),fill=INK)
-    y+=280;d.text((75,y),"PLUS THESE SHARED COMMITMENTS",font=fonts(24,True),fill=INK);y+=60
+    y+=235;d.text((75,y),"PLUS THESE SHARED COMMITMENTS",font=fonts(24,True),fill=INK);y+=60
     for label,value in [("New security deposit","$1,600"),("Overlapping rent","$1,200"),
       ("Setup and cleaning","$430"),("Protected cash buffer","$700")]:
         d.text((88,y),label,font=fonts(25),fill=INK)
         d.text((765,y),value,font=fonts(26,True),fill=INK)
         d.line((85,y+56,913,y+56),fill=LINE,width=2);y+=81
-    y+=22;d.rounded_rectangle((70,y,930,y+205),radius=26,fill=INK)
+    y+=14;d.rounded_rectangle((70,y,930,y+205),radius=26,fill=INK)
     d.text((110,y+25),"TOTAL CASH TO BE READY",font=fonts(25,True),fill="#E0ECE4")
     d.text((110,y+78),"$5,040",font=fonts(65,True),fill=WHITE)
     d.text((544,y+78),"$5,805",font=fonts(65,True),fill="#F3D5C4")
@@ -322,6 +322,22 @@ def pdf():
             pdf.setFillColor(HexColor(RUST));pdf.rect(66,top-57-j*32,6,11,stroke=0,fill=1)
             pdf.setFillColor(HexColor(INK));pdf.setFont("Helvetica-Bold",12)
             pdf.drawString(88,top-55-j*32,v)
+        # Each relevant lesson includes a human-typeset numerical chart in the decision box.
+        if idx in (2,4,7):
+            pairs={2:[("DIY logistics",1110),("Movers logistics",1875)],
+                   4:[("DIY full need",5040),("Movers full need",5805)],
+                   7:[("DIY overrun",5206.5),("Movers overrun",6086.25)]}[idx]
+            mx=max(value for _,value in pairs)
+            by=top-155
+            for ci,(name,value) in enumerate(pairs):
+                ry=by-ci*44
+                pdf.setFillColor(HexColor(INK));pdf.setFont("Helvetica",9)
+                pdf.drawString(68,ry+21,name)
+                pdf.setFillColor(HexColor(LINE));pdf.roundRect(68,ry,329,11,5.5,fill=1,stroke=0)
+                pdf.setFillColor(HexColor(MOSS if ci==0 else RUST))
+                pdf.roundRect(68,ry,329*value/mx,11,5.5,fill=1,stroke=0)
+                pdf.setFont("Helvetica-Bold",9);pdf.setFillColor(HexColor(INK))
+                pdf.drawRightString(519,ry+3,"$"+format(value,",.2f"))
         pdf.setFillColor(HexColor(INK));pdf.setFont("Helvetica",8)
         pdf.drawString(46,35,"Fictional worked case. Verify contracts, rates and real due dates.")
         pdf.drawRightString(w-46,35,f"{idx:02d} / 10")
