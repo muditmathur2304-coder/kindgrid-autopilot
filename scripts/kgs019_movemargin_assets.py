@@ -79,7 +79,7 @@ def art():
       ("Setup and cleaning","$430"),("Protected cash buffer","$700")]:
         d.text((88,y),label,font=fonts(25),fill=INK)
         d.text((765,y),value,font=fonts(26,True),fill=INK)
-        d.line((85,y+56,913,y+56),fill=LINE,width=2);y+=81
+        d.line((85,y+56,913,y+56),fill=LINE,width=2);y+=73
     y+=14;d.rounded_rectangle((70,y,930,y+205),radius=26,fill=INK)
     d.text((110,y+25),"TOTAL CASH TO BE READY",font=fonts(25,True),fill="#E0ECE4")
     d.text((110,y+78),"$5,040",font=fonts(65,True),fill=WHITE)
