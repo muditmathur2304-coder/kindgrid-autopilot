@@ -1,0 +1,29 @@
+name: KindGrid KGS019 MoveMargin Build and Independent Review
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/kgs019_movemargin_assets.py
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install Pillow 'pypdf>=5,<8' 'reportlab>=4,<5'
+      - name: Build original files and run math/format QA (no seller mutation)
+        run: python scripts/kgs019_movemargin_assets.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: kgs019-movemargin-creative-preflight
+          path: kindgrid-kgs019-build/
+          retention-days: 21
+          if-no-files-found: error
