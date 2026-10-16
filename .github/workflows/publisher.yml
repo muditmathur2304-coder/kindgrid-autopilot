@@ -12,6 +12,7 @@ on:
   push:
     paths:
       - 'ops/owner_release_2026_10_16.txt' # one owner-authorized immediate release event; no added workflow
+      - 'ops/owner_recovery_2026_10_16.txt' # known seller draft recovery only, one-shot
 concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
@@ -71,14 +72,19 @@ jobs:
         id: gumroad_queue
         run: python -m scripts.check_pair_queue
       - uses: actions/setup-go@v5
-        if: steps.gumroad_queue.outputs.needs_cli == 'true'
+        if: steps.gumroad_queue.outputs.needs_cli == 'true' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16')
         with:
           go-version: '1.25.4'
           cache: false
       - name: Install pinned Gumroad CLI (only when both paired products are verified READY)
-        if: steps.gumroad_queue.outputs.needs_cli == 'true'
+        if: steps.gumroad_queue.outputs.needs_cli == 'true' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16')
         run: |
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Recover exact KGS020 seller draft and verified KGS021 free partner once
+        if: github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true'
+        env:
+          KINDGRID_RECOVERY_AUTHORIZED: KINDGRID_OWNER_RECOVER_2026_10_16
+        run: python -m scripts.recover_pair020_once
       - name: Safe publishing pass
         run: python -m src.autopilot
