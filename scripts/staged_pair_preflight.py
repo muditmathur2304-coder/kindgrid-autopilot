@@ -143,6 +143,34 @@ def check_seller_slugs() -> None:
             print("STAGED_POST_ATTEMPT_SELLER_RECONCILE: " + needle +
                   " count=" + str(len(matches)) +
                   " published_flags=" + ",".join(str(p.get("published")) for p in matches))
+        # Narrow read-only recovery inspection: exact existing paid draft only.
+        recovered = [p for p in products if isinstance(p, dict) and
+                     str(p.get("custom_permalink") or "") == "retainer-margin-studio"
+                     and str(p.get("published")).lower() == "false"]
+        if len(recovered) == 1 and str(recovered[0].get("id") or ""):
+            paid_id = str(recovered[0]["id"])
+            response = requests.get("https://api.gumroad.com/v2/products/" + paid_id,
+                                    headers={"Authorization": "Bearer " + token,
+                                             "Accept": "application/json"}, timeout=20)
+            if response.ok and response.json().get("success") is True:
+                detail = response.json().get("product") or {}
+                print("STAGED_PAID_DRAFT_PROVIDER_ID: " + paid_id)
+                print("STAGED_PAID_DRAFT_NAME_MATCH: " + str(
+                    str(detail.get("name") or "").startswith("RetainerMargin Studio")))
+                print("STAGED_PAID_DRAFT_PUBLISHED: " + str(detail.get("published")))
+                for field in ("files", "rich_content_files", "covers", "cover_images", "rich_content"):
+                    field_value = detail.get(field)
+                    print("STAGED_PAID_DRAFT_FIELD: " + field + " type=" +
+                          type(field_value).__name__ + " count=" +
+                          str(len(field_value) if isinstance(field_value,(list,dict)) else 0))
+                print("STAGED_PAID_DRAFT_THUMBNAIL_PRESENT: " +
+                      str(bool(detail.get("thumbnail_url") or detail.get("thumbnail"))))
+                print("STAGED_PAID_DRAFT_KEYS: " + ", ".join(sorted(
+                    k for k in detail if k in ("id", "name", "custom_permalink", "published",
+                    "content", "files", "rich_content_files", "covers", "cover_images", "rich_content",
+                    "thumbnail_url", "thumbnail", "short_url", "file_info", "product_files"))))
+            else:
+                print("STAGED_PAID_DRAFT_DETAILS_BLOCKED: non-200/unsuccessful GET")
         print("STAGED_GUMROAD_READ_OK: Seller product list available")
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
