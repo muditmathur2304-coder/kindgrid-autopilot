@@ -61,6 +61,9 @@ jobs:
       - name: Verify Gumroad seller token and store (read only)
         if: github.event_name == 'workflow_dispatch' && env.GUMROAD_ACCESS_TOKEN != ''
         run: python scripts/check_gumroad_connection.py
+      - name: Inspect staged premium tool files and Pinterest/Gumroad access (read only)
+        continue-on-error: true
+        run: python -m scripts.staged_pair_preflight
       - name: Check Python module imports and detect approved pairs (read only)
         id: gumroad_queue
         run: python -m scripts.check_pair_queue
