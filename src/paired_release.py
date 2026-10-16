@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import tempfile
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
@@ -20,6 +21,51 @@ from src import autopilot as a
 
 EXACT_ROLES = {"PAID", "FREE"}
 MIN_NEW_ID = 8
+
+
+def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
+    """Fail closed on tool-first XLSX packages before any Gumroad mutation.
+
+    This checks workbook structure and original embedded instructional artwork.
+    Arithmetic, mobile visuals, buyer demand, and native Sheets checks still
+    require independent item-specific KGS-QA-V2 PASS documentation.
+    """
+    a.require(15000 <= len(blob) <= 20_000_000,
+              f"{pair_id}: primary XLSX size is implausible")
+    try:
+        with ZipFile(io.BytesIO(blob)) as zipped:
+            names = zipped.namelist()
+            sheets = [n for n in names if n.startswith("xl/worksheets/sheet")
+                      and n.endswith(".xml")]
+            a.require("xl/workbook.xml" in names and len(sheets) >= 2,
+                      f"{pair_id}: expected a real multi-sheet Excel workbook")
+            a.require(not any("vbaProject.bin" in n or
+                              n.startswith("xl/externalLinks/") for n in names),
+                      f"{pair_id}: macros and external links are not allowed")
+            formula_count = sum(len(re.findall(rb"<(?:[A-Za-z0-9_]+:)?f(?=\\s|>)",
+                                               zipped.read(n))) for n in sheets)
+            a.require(formula_count >= 10,
+                      f"{pair_id}: interactive XLSX requires at least 10 formulas")
+            artwork = [n for n in names if n.startswith("xl/media/") and
+                       n.lower().endswith((".png", ".jpg", ".jpeg"))]
+            a.require(bool(artwork),
+                      f"{pair_id}: no actual instructional image embedded in XLSX")
+            from PIL import Image, UnidentifiedImageError
+            suitable = 0
+            for n in artwork:
+                picture = zipped.read(n)
+                try:
+                    with Image.open(io.BytesIO(picture)) as img:
+                        width, height = img.size
+                        img.verify()
+                except (OSError, UnidentifiedImageError):
+                    raise ValueError(f"{pair_id}: unreadable embedded XLSX illustration")
+                if len(picture) >= 3000 and width >= 500 and height >= 250:
+                    suitable += 1
+            a.require(suitable >= 1,
+                      f"{pair_id}: no substantial, readable embedded illustration")
+    except BadZipFile:
+        raise ValueError(f"{pair_id}: invalid Excel workbook archive") from None
 
 
 def select_ready_pairs(rows: list[dict]) -> list[tuple[dict, dict]]:
@@ -104,8 +150,11 @@ def prepare_pair(store, paid, free, target: Path) -> dict:
             image.verify()
             a.require(image.width >= 850 and image.height >= 500,
                       f"{pair_id}: {role} page-by-page contact sheet unreadable")
-        a.require((16 <= count <= 55) if role == "PAID" else (3 <= count <= 7),
-                  f"{pair_id}: {role} workbook page count outside quality gate")
+        if role == "PAID":
+            a.require(bool(str(row.get("Bonus File Drive Link") or "").strip()),
+                      f"{pair_id}: paid product must include a real primary XLSX")
+        a.require((3 <= count <= 15) if role == "PAID" else (3 <= count <= 7),
+                  f"{pair_id}: {role} instructional guide page count outside quality gate")
         listing = store.get_doc_text(
             a.google_file_id(row["Listing Copy Drive Link"], "document"))
         summary, description = a.get_listing_copy(listing)
@@ -128,13 +177,7 @@ def prepare_pair(store, paid, free, target: Path) -> dict:
             blob = store.get_bytes(
                 a.google_file_id(extra_link),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            try:
-                with ZipFile(io.BytesIO(blob)) as zipped:
-                    a.require("xl/workbook.xml" in zipped.namelist() and
-                              any(p.startswith("xl/worksheets/sheet") for p in zipped.namelist()),
-                              f"{pair_id}: XLSX is not a valid workbook")
-            except BadZipFile:
-                raise ValueError(f"{pair_id}: broken Excel workbook") from None
+            validate_tool_xlsx(blob, pair_id)
             bonus = target / (role.lower() + "_interactive.xlsx")
             bonus.write_bytes(blob)
             item["bonus"] = bonus
@@ -161,9 +204,14 @@ def create_and_verify_draft(item: dict, role: str) -> str:
                  "--description", item["description"], "--custom-summary", item["summary"]]
     if role == "FREE":
         arguments.append("--pay-what-you-want")
-    arguments += ["--file", str(item["pdf"])]
-    if item["bonus"]:
-        arguments += ["--file", str(item["bonus"])]
+    # XLSX is the primary PAID deliverable, with the short visual PDF guide
+    # attached second; FREE may remain a complete standalone PDF.
+    if role == "PAID" and item["bonus"]:
+        arguments += ["--file", str(item["bonus"]), "--file", str(item["pdf"])]
+    else:
+        arguments += ["--file", str(item["pdf"])]
+        if item["bonus"]:
+            arguments += ["--file", str(item["bonus"])]
     arguments += ["--cover-image", str(item["cover"]),
                   "--thumbnail", str(item["cover"])]
     for img in item["previews"]:
