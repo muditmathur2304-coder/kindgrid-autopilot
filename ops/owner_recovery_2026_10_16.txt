@@ -1,0 +1,7 @@
+OWNER APPROVED GUMROAD DRAFT RECOVERY — 2026-10-16
+Recovery target: existing seller product ID 2Oo_ipk1UmplVimSJLqNnA==, KGS-020 retainer-margin-studio.
+Authenticated seller GET confirms it exists once, published false, $900 cents, 2 uploaded files, 3 covers.
+Do NOT call products create for KGS-020 again; publish only exact original draft after identity/QA verification.
+Then create KGS-021 free once with corrected CLI (no redundant thumbnail), verify downloadable PDF and original cover/gallery, publish only after paid URL confirmed.
+No retries of uncertain state. Do not modify previously sold KindGrid products.
+This push authorizes exactly one owner-demanded recovery under the existing GitHub publisher. No new scheduled automation and no changes to two-hour cron.
