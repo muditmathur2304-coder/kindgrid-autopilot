@@ -19,7 +19,7 @@ STAGED_ASSETS = {
     "KGS020_GUIDE": ("1loOWZHvU1aiUeqsyRJ3G17NturvRU79r", "application/pdf"),
     "KGS021_FREE_PDF": ("1fPOiQLQPYZ7s_PZ6MkS0ay4SqQxaUFGy", "application/pdf"),
     "KGS020_COVER": ("1bOEOgM_VNoLFmSw9m-1sIIJ9NFgaZlR7", "image/png"),
-    "KGS021_COVER": ("1-kZURLUBoRdI9P90e0BBCQhmkpcPpP", "image/png"),
+    "KGS021_COVER": ("10DGxnD5XYRwSI_9Pd0NOegz1eeVTjDNn", "image/png"),
     "KGS020_GALLERY_ONE": ("1Qf-BmgfN9fp30u6mVosbYBCtvCgrORoq", "image/png"),
     "KGS020_GALLERY_TWO": ("1Y3i9TO3EbU0aIaOIdeqDTyP8h-c7qLwL", "image/png"),
     "KGS021_GALLERY": ("11VsxZt_JdykX8AsKNW4oE67uPptsYjaV", "image/png"),
