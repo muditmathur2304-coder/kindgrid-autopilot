@@ -272,8 +272,26 @@ def check_existing_pins_send_now_capability() -> None:
     except Exception as exc:
         print("STAGED_BUFFER_SEND_NOW_BLOCKED: " + type(exc).__name__)
 
+def check_latest_queue_rows() -> None:
+    """Read-only current live queue snapshot, for owner release decision."""
+    try:
+        store = a.GoogleStore()
+        for sheet, ident, status in (("Gumroad Upload Queue", "Product ID", "Upload Status"),
+                                     ("Publishing Queue", "Queue ID", "Status")):
+            rows = [r for r in store.get_rows(sheet) if str(r.get(ident) or "").strip()]
+            print("KINDGRID_LIVE_QUEUE_COUNT " + sheet + " " + str(len(rows)))
+            for r in rows[-12:]:
+                print("KINDGRID_LIVE_QUEUE_ITEM " + sheet + " " +
+                      str(r.get(ident) or "") + " " + str(r.get(status) or "") +
+                      " provider_ref=" + str(bool(r.get("Batch ID") or r.get("Gumroad Live URL"))) +
+                      " qa=" + str(r.get("QA Outcome") or "") +
+                      " pair=" + str(r.get("Pair ID") or ""))
+    except Exception as exc:
+        print("KINDGRID_LIVE_QUEUE_UNAVAILABLE " + type(exc).__name__)
+
 def main() -> int:
     print("KINDGRID_STAGED_PREFLIGHT_READ_ONLY: no seller/Buffer/Sheets mutation")
+    check_latest_queue_rows()
     check_assets()
     check_buffer()
     check_seller_slugs()
