@@ -42,7 +42,7 @@ def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
             a.require(not any("vbaProject.bin" in n or
                               n.startswith("xl/externalLinks/") for n in names),
                       f"{pair_id}: macros and external links are not allowed")
-            formula_count = sum(len(re.findall(rb"<(?:[A-Za-z0-9_]+:)?f(?=[\\s>])",
+            formula_count = sum(len(re.findall(rb"<(?:[A-Za-z0-9_]+:)?f(?=\\s|>)",
                                                zipped.read(n))) for n in sheets)
             a.require(formula_count >= 10,
                       f"{pair_id}: interactive XLSX requires at least 10 formulas")
