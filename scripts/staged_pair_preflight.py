@@ -163,6 +163,17 @@ def check_seller_slugs() -> None:
                     print("STAGED_PAID_DRAFT_FIELD: " + field + " type=" +
                           type(field_value).__name__ + " count=" +
                           str(len(field_value) if isinstance(field_value,(list,dict)) else 0))
+                # Inspect only non-sensitive filename extensions and expected seller price.
+                from pathlib import PurePosixPath
+                file_names = [str(f.get("name") or f.get("filename") or "")
+                              for f in (detail.get("files") or []) if isinstance(f, dict)]
+                ext = [PurePosixPath(n).suffix.lower() for n in file_names]
+                print("STAGED_PAID_DRAFT_FILE_EXTENSIONS: " + ",".join(ext))
+                print("STAGED_PAID_DRAFT_FILES_MATCH: " +
+                      str(sorted(ext) == [".pdf", ".xlsx"]))
+                print("STAGED_PAID_DRAFT_PRICE_CENTS: " + str(detail.get("price")))
+                print("STAGED_PAID_DRAFT_SLUG_MATCH: " +
+                      str(detail.get("custom_permalink") == "retainer-margin-studio"))
                 print("STAGED_PAID_DRAFT_THUMBNAIL_PRESENT: " +
                       str(bool(detail.get("thumbnail_url") or detail.get("thumbnail"))))
                 print("STAGED_PAID_DRAFT_KEYS: " + ", ".join(sorted(
