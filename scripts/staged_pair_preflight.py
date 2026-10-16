@@ -168,6 +168,13 @@ def check_seller_slugs() -> None:
                 file_names = [str(f.get("name") or f.get("filename") or "")
                               for f in (detail.get("files") or []) if isinstance(f, dict)]
                 ext = [PurePosixPath(n).suffix.lower() for n in file_names]
+                print("STAGED_PAID_DRAFT_FILE_KEYS: " + "|".join(
+                    ",".join(sorted(f.keys())) for f in (detail.get("files") or []) if isinstance(f,dict)))
+                info = detail.get("file_info")
+                print("STAGED_PAID_DRAFT_FILE_INFO_SHAPE: " + type(info).__name__)
+                if isinstance(info,dict):
+                    print("STAGED_PAID_DRAFT_FILE_INFO_ATTRS: " + "|".join(
+                        ",".join(sorted(v.keys())) for v in info.values() if isinstance(v,dict)))
                 print("STAGED_PAID_DRAFT_FILE_EXTENSIONS: " + ",".join(ext))
                 print("STAGED_PAID_DRAFT_FILES_MATCH: " +
                       str(sorted(ext) == [".pdf", ".xlsx"]))
