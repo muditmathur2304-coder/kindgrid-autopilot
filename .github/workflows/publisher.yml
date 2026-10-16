@@ -9,6 +9,9 @@ on:
         required: true
         type: boolean
         default: true
+  push:
+    paths:
+      - 'ops/owner_release_2026_10_16.txt' # one owner-authorized immediate release event; no added workflow
 concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
@@ -26,7 +29,7 @@ jobs:
       BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
       CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
       GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
-      LIVE_MODE: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      LIVE_MODE: ${{ (github.event_name == 'schedule' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RELEASE_2026_10_16')) && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
       PIN_AUTOSCHEDULE: 'true' # OWNER-APPROVED scheduled-only: publish only fully audited READY Pins; every other state is blocked
       GUMROAD_CREATE_DRAFTS: 'false' # QUALITY HOLD: old single-product creation path disabled
       GUMROAD_AUTOPUBLISH: 'false' # QUALITY HOLD: do not publish isolated/mediocre items
