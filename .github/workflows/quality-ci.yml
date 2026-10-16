@@ -32,6 +32,17 @@ jobs:
         run: python -m compileall -q src scripts tests
       - name: Run publishing safety tests
         run: python -m unittest discover -s tests -v
+      - name: Diagnose staged Gumroad, Pinterest and Drive permissions (READ ONLY, default-branch push only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
+          BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
+          GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
+          LIVE_MODE: 'false'
+        run: python -m scripts.staged_pair_preflight
       - name: Regression check scheduled publisher Python entrypoints (no external writes)
         env:
           LIVE_MODE: 'false'
