@@ -102,6 +102,7 @@ def check_seller_slugs() -> None:
         a.require(payload.get("success") is True and isinstance(payload.get("products"), list),
                   "Unverified seller product list")
         products = payload["products"]
+        print("STAGED_GUMROAD_PRODUCT_COUNT: " + str(len(products)))
         slugs = set()
         for product in products:
             if not isinstance(product, dict):
@@ -128,6 +129,12 @@ def check_seller_slugs() -> None:
                      and expected_name.lower() in str(p.get("name") or "").lower()]
             print("STAGED_EXISTING_TITLE_MATCH: " + expected_name +
                   f" count={len(found)} published={','.join(str(p.get('published')) for p in found)}")
+        for slug in ("paycheck-gap-starter", "paycheck-gap-playbook"):
+            try:
+                a.verify_public_product_url("https://kindgridstudio.gumroad.com/l/" + slug, slug)
+                print("STAGED_PUBLIC_GUMROAD_PAGE_PASS: " + slug)
+            except Exception as exc:
+                print("STAGED_PUBLIC_GUMROAD_PAGE_BLOCKED: " + slug + " " + type(exc).__name__)
         print("STAGED_GUMROAD_READ_OK: Seller product list available")
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
