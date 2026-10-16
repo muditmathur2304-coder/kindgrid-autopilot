@@ -122,6 +122,12 @@ def check_seller_slugs() -> None:
                 print("STAGED_EXISTING_PRODUCT_NOT_PUBLISHED: " + expected_slug)
             else:
                 print("STAGED_EXISTING_PRODUCT_NOT_UNIQUE: " + expected_slug)
+        # Log only public matching titles and publish flags (never seller IDs/tokens).
+        for expected_name in ("The Paycheck Gap Playbook", "FREE Paycheck Gap Starter"):
+            found = [p for p in products if isinstance(p, dict)
+                     and expected_name.lower() in str(p.get("name") or "").lower()]
+            print("STAGED_EXISTING_TITLE_MATCH: " + expected_name +
+                  f" count={len(found)} published={','.join(str(p.get('published')) for p in found)}")
         print("STAGED_GUMROAD_READ_OK: Seller product list available")
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
