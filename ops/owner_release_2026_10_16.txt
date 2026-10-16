@@ -1,0 +1,6 @@
+OWNER-REQUESTED ONE-TIME RELEASE — 2026-10-16
+User requested actual immediate Gumroad publishing (KGS-020 PAID + KGS-021 FREE) and Pinterest scheduling (Q-65 + Q-66).
+Use the EXISTING publisher workflow, no new automation, maintain two-hour schedule.
+All KGS-QA-V2 reports and source assets already READY in live Dashboard; scoped by queue status.
+Fail closed on missing seller attachments, invalid product pages, duplicate slugs, Buffer queue, wrong boards or any uncertain provider outcomes.
+No manual fallback seller retry and no existing sold file replacement.
