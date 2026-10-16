@@ -212,8 +212,10 @@ def create_and_verify_draft(item: dict, role: str) -> str:
         arguments += ["--file", str(item["pdf"])]
         if item["bonus"]:
             arguments += ["--file", str(item["bonus"])]
-    arguments += ["--cover-image", str(item["cover"]),
-                  "--thumbnail", str(item["cover"])]
+    # Gumroad may create a complete draft then fail when applying the optional
+    # thumbnail, leaving an uncertain seller write. Cover + original galleries
+    # are mandatory and independently checked, so avoid this nonessential call.
+    arguments += ["--cover-image", str(item["cover"])]
     for img in item["previews"]:
         arguments += ["--preview-image", str(img)]
     response = a.gumroad_cli(arguments)
