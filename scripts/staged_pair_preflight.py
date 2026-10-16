@@ -243,12 +243,42 @@ def check_live_release_candidates() -> None:
         print("STAGED_RELEASE_READONLY_PREFLIGHT_ERROR: " + type(exc).__name__ +
               ": " + str(exc)[:200])
 
+
+def check_existing_pins_send_now_capability() -> None:
+    """Provider READ ONLY: can the exact two already-scheduled Pins be expedited?"""
+    try:
+        client = a.BufferClient()
+        q = """query P($id:PostId!) {post(input:{id:$id}) {
+            id status dueAt allowedActions externalLink
+            metadata { ... on PinterestPostMetadata { title url board {serviceId} } }
+        }}"""
+        posts = {
+            "Q-65": ("6ad193acee2c696029b87cf7",
+                     "https://kindgridstudio.gumroad.com/l/paycheck-gap-starter"),
+            "Q-66": ("6ad193affb64fffcf1b0d38d",
+                     "https://kindgridstudio.gumroad.com/l/paycheck-gap-playbook")
+        }
+        for queue_id, (post_id, root) in posts.items():
+            post = client.graphql(q, {"id": post_id}).get("post") or {}
+            actions = [str(v) for v in post.get("allowedActions") or []]
+            target = (post.get("metadata") or {}).get("url") or ""
+            print("STAGED_BUFFER_SEND_NOW_READONLY: " + queue_id +
+                  " id_match=" + str(post.get("id") == post_id) +
+                  " status=" + str(post.get("status")) +
+                  " can_publish_now=" + str("publishPostNow" in actions) +
+                  " can_update=" + str("updatePost" in actions) +
+                  " expected_destination=" + str(target.startswith(root)) +
+                  " due_at=" + str(post.get("dueAt")))
+    except Exception as exc:
+        print("STAGED_BUFFER_SEND_NOW_BLOCKED: " + type(exc).__name__)
+
 def main() -> int:
     print("KINDGRID_STAGED_PREFLIGHT_READ_ONLY: no seller/Buffer/Sheets mutation")
     check_assets()
     check_buffer()
     check_seller_slugs()
     check_live_release_candidates()
+    check_existing_pins_send_now_capability()
     print("STAGED_PREFLIGHT_ONLY: This is NOT KGS-QA-V2 PASS or release authorization")
     return 0
 
