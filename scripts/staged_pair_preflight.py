@@ -139,11 +139,62 @@ def check_seller_slugs() -> None:
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
 
+
+def check_live_release_candidates() -> None:
+    """Full read-only dry preflight of existing dashboard READY rows.
+
+    This does not authorize or create any seller/Buffer mutation.
+    """
+    from datetime import datetime, timezone
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
+    from src.paired_release import select_ready_pairs, prepare_pair
+    try:
+        store = a.GoogleStore()
+        gumrows = store.get_rows("Gumroad Upload Queue")
+        pairs = select_ready_pairs(gumrows)
+        print("STAGED_PAIRS_READY_COUNT: " + str(len(pairs)))
+        for paid, free in pairs:
+            if (paid.get("Product ID"), free.get("Product ID")) != ("KGS-020", "KGS-021"):
+                continue
+            try:
+                with TemporaryDirectory(prefix="kindgrid-readonly-pair-") as folder:
+                    prepared = prepare_pair(store, paid, free, Path(folder))
+                    for role, item in prepared.items():
+                        print("STAGED_FULL_PAIR_ASSETS_PASS: " + role +
+                              " pages=" + str(item.get("pages")) +
+                              " preview_count=" + str(len(item.get("previews"))) +
+                              " xlsx=" + str(bool(item.get("bonus"))))
+            except Exception as exc:
+                print("STAGED_FULL_PAIR_ASSETS_BLOCKED: " + type(exc).__name__ +
+                      ": " + str(exc)[:180])
+        pins = store.get_rows("Publishing Queue")
+        boards = a.BufferClient().boards()
+        queued = a.BufferClient().scheduled()
+        for row in pins:
+            if row.get("Queue ID") not in ("Q-65", "Q-66"):
+                continue
+            try:
+                pin = a.validate_pin(row, datetime.now(timezone.utc), 36)
+                a.verify_qa_report(store, row, row["Queue ID"])
+                a.require(pin["board"] in boards, "Pinterest board not found")
+                a.require(queued < 10, "Buffer queue full")
+                a.verify_public_product_url(pin["destination"])
+                a.validate_image(store.get_bytes(pin["image_id"], "image/png"))
+                print("STAGED_PIN_FULL_PREFLIGHT_PASS: " + row["Queue ID"])
+            except Exception as exc:
+                print("STAGED_PIN_FULL_PREFLIGHT_BLOCKED: " + row.get("Queue ID", "?") +
+                      " " + type(exc).__name__ + ": " + str(exc)[:180])
+    except Exception as exc:
+        print("STAGED_RELEASE_READONLY_PREFLIGHT_ERROR: " + type(exc).__name__ +
+              ": " + str(exc)[:200])
+
 def main() -> int:
     print("KINDGRID_STAGED_PREFLIGHT_READ_ONLY: no seller/Buffer/Sheets mutation")
     check_assets()
     check_buffer()
     check_seller_slugs()
+    check_live_release_candidates()
     print("STAGED_PREFLIGHT_ONLY: This is NOT KGS-QA-V2 PASS or release authorization")
     return 0
 
