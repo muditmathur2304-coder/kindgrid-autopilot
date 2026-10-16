@@ -111,6 +111,17 @@ def check_seller_slugs() -> None:
         for key in ("retainer-margin-studio", "retainer-one-contract-reality-check-free"):
             print(("STAGED_GUMROAD_SLUG_COLLISION: " if key in slugs
                    else "STAGED_GUMROAD_SLUG_AVAILABLE_IN_LIST: ") + key)
+        # Existing live funnels are safe only when seller confirms current public status.
+        for expected_slug in ("paycheck-gap-starter", "paycheck-gap-playbook"):
+            matching = [p for p in products if isinstance(p, dict)
+                        and (str(p.get("custom_permalink") or "") == expected_slug
+                             or str(p.get("short_url") or "").rstrip("/").split("/")[-1] == expected_slug)]
+            if len(matching) == 1 and matching[0].get("published") is True:
+                print("STAGED_EXISTING_LIVE_CONFIRMED: " + expected_slug)
+            elif len(matching) == 1:
+                print("STAGED_EXISTING_PRODUCT_NOT_PUBLISHED: " + expected_slug)
+            else:
+                print("STAGED_EXISTING_PRODUCT_NOT_UNIQUE: " + expected_slug)
         print("STAGED_GUMROAD_READ_OK: Seller product list available")
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
