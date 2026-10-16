@@ -75,6 +75,7 @@ def check_buffer() -> None:
         boards = client.boards()
         queued = client.scheduled()
         print(f"STAGED_BUFFER_QUEUE_READ_PASS: {queued}/10")
+        print("STAGED_BOARDS_AVAILABLE: " + " | ".join(sorted(boards.keys())))
         for name in ("Freelancer Pricing & Cash Flow",
                      "Freelancer Budgeting & Irregular Income",
                      "Farmers Market Bakery Business Tips"):
