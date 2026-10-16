@@ -13,6 +13,7 @@ on:
     paths:
       - 'ops/owner_release_2026_10_16.txt' # one owner-authorized immediate release event; no added workflow
       - 'ops/owner_recovery_2026_10_16.txt' # known seller draft recovery only, one-shot
+      - 'ops/owner_send_now_2026_10_16.txt' # exact two existing Buffer posts, no new Pins
 concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
@@ -68,6 +69,11 @@ jobs:
       - name: Inspect staged premium tool files and Pinterest/Gumroad access (read only)
         continue-on-error: true
         run: python -m scripts.staged_pair_preflight
+      - name: Owner-authorized publish-now for exact Q65 and Q66 existing Buffer posts
+        if: github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_SENDNOW_2026_10_16' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true'
+        env:
+          KINDGRID_PIN_NOW_AUTHORIZATION: KINDGRID_OWNER_SENDNOW_2026_10_16
+        run: python -m scripts.publish_existing_buffer_now_once
       - name: Check Python module imports and detect approved pairs (read only)
         id: gumroad_queue
         run: python -m scripts.check_pair_queue
