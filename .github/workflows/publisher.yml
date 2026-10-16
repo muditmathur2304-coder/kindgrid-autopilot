@@ -9,11 +9,6 @@ on:
         required: true
         type: boolean
         default: true
-  push:
-    paths:
-      - 'ops/owner_release_2026_10_16.txt' # one owner-authorized immediate release event; no added workflow
-      - 'ops/owner_recovery_2026_10_16.txt' # known seller draft recovery only, one-shot
-      - 'ops/owner_send_now_2026_10_16.txt' # exact two existing Buffer posts, no new Pins
 concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
@@ -31,7 +26,7 @@ jobs:
       BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
       CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
       GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
-      LIVE_MODE: ${{ (github.event_name == 'schedule' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RELEASE_2026_10_16')) && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
+      LIVE_MODE: ${{ github.event_name == 'schedule' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true' && 'true' || 'false' }}
       PIN_AUTOSCHEDULE: 'true' # OWNER-APPROVED scheduled-only: publish only fully audited READY Pins; every other state is blocked
       GUMROAD_CREATE_DRAFTS: 'false' # QUALITY HOLD: old single-product creation path disabled
       GUMROAD_AUTOPUBLISH: 'false' # QUALITY HOLD: do not publish isolated/mediocre items
@@ -69,28 +64,18 @@ jobs:
       - name: Inspect staged premium tool files and Pinterest/Gumroad access (read only)
         continue-on-error: true
         run: python -m scripts.staged_pair_preflight
-      - name: Owner-authorized publish-now for exact Q65 and Q66 existing Buffer posts
-        if: github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_SENDNOW_2026_10_16' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true'
-        env:
-          KINDGRID_PIN_NOW_AUTHORIZATION: KINDGRID_OWNER_SENDNOW_2026_10_16
-        run: python -m scripts.publish_existing_buffer_now_once
       - name: Check Python module imports and detect approved pairs (read only)
         id: gumroad_queue
         run: python -m scripts.check_pair_queue
       - uses: actions/setup-go@v5
-        if: steps.gumroad_queue.outputs.needs_cli == 'true' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16')
+        if: steps.gumroad_queue.outputs.needs_cli == 'true'
         with:
           go-version: '1.25.4'
           cache: false
       - name: Install pinned Gumroad CLI (only when both paired products are verified READY)
-        if: steps.gumroad_queue.outputs.needs_cli == 'true' || (github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16')
+        if: steps.gumroad_queue.outputs.needs_cli == 'true'
         run: |
           go install github.com/antiwork/gumroad-cli/cmd/gumroad@v0.20261002.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - name: Recover exact KGS020 seller draft and verified KGS021 free partner once
-        if: github.event_name == 'push' && github.event.head_commit.message == 'KINDGRID_OWNER_RECOVER_2026_10_16' && vars.AUTOPILOT_LIVE_ENABLED == 'true' && vars.AUTOPILOT_PAUSED != 'true'
-        env:
-          KINDGRID_RECOVERY_AUTHORIZED: KINDGRID_OWNER_RECOVER_2026_10_16
-        run: python -m scripts.recover_pair020_once
       - name: Safe publishing pass
         run: python -m src.autopilot
