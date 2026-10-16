@@ -135,6 +135,14 @@ def check_seller_slugs() -> None:
                 print("STAGED_PUBLIC_GUMROAD_PAGE_PASS: " + slug)
             except Exception as exc:
                 print("STAGED_PUBLIC_GUMROAD_PAGE_BLOCKED: " + slug + " " + type(exc).__name__)
+        for needle in ("retainer-margin-studio", "retainer-one-contract-reality-check-free"):
+            matches = [p for p in products if isinstance(p, dict)
+                       and (str(p.get("custom_permalink") or "") == needle
+                            or str(p.get("short_url") or "").rstrip("/").split("/")[-1] == needle
+                            or needle.replace("-", " ") in str(p.get("name") or "").lower())]
+            print("STAGED_POST_ATTEMPT_SELLER_RECONCILE: " + needle +
+                  " count=" + str(len(matches)) +
+                  " published_flags=" + ",".join(str(p.get("published")) for p in matches))
         print("STAGED_GUMROAD_READ_OK: Seller product list available")
     except Exception as exc:
         print("STAGED_GUMROAD_READ_BLOCKED:", type(exc).__name__)
