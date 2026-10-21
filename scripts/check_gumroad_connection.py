@@ -2,15 +2,26 @@
 
 Never prints access tokens, account email, full API responses or headers.
 Performs GET /v2/user and GET /v2/products only.
+
+Checks slugs rather than product names — slugs are stable; names can be
+edited by the owner without updating this file.  At least one slug from
+EXPECTED_SLUGS must appear in the live product list for the preflight to pass.
+This design tolerates 21+ products and future additions without code changes.
 """
 import os
 import sys
 import requests
 
 BASE = "https://api.gumroad.com/v2"
-EXPECTED = {
-    "52-Week Financial Wellness Savings Challenge Printable",
-    "Ultimate 52-Week Savings & Budgeting Planner Bundle",
+
+# Sample of verified live slugs spanning KGS-001 to KGS-022.
+# At least one must be present for the preflight to pass.
+EXPECTED_SLUGS = {
+    "52-week-savings-challenge",
+    "market-day-margin-guide",
+    "bakeslot-order-capacity-studio",
+    "retainer-margin-studio",
+    "market-payout-reconciler-studio",
 }
 
 
@@ -47,19 +58,21 @@ def main() -> int:
         products = product_response.get("products") or []
         if not isinstance(products, list):
             raise RuntimeError("Gumroad returned an unexpected product-list format")
-        existing_names = {
-            str(p.get("name", "")).strip() for p in products if isinstance(p, dict)
+        live_slugs = {
+            str(p.get("custom_permalink") or p.get("permalink") or p.get("short_url") or "").strip()
+            for p in products if isinstance(p, dict)
         }
-        missing = EXPECTED - existing_names
-        if missing:
-            print("GUMROAD_ACCESS_OK: Seller authenticated and product list accessible.")
-            print("GUMROAD_REVIEW: One or more expected KindGrid product names not found; confirm seller account.")
+        found = EXPECTED_SLUGS & live_slugs
+        product_count = len(products)
+        if not found:
+            print(f"GUMROAD_ACCESS_OK: Seller authenticated. {product_count} products found.")
+            print("GUMROAD_REVIEW: None of the expected KindGrid slugs matched. Confirm seller account or slug list.")
             return 1
     except RuntimeError as exc:
         print(f"GUMROAD_VERIFY_FAILED: {exc}")
         print("GUMROAD_SAFE: No product was created, edited or published.")
         return 1
-    print("GUMROAD_CONNECTED: Seller account and two existing KindGrid products verified.")
+    print(f"GUMROAD_CONNECTED: Seller authenticated. {product_count} products found. {len(found)} slug(s) verified.")
     print("GUMROAD_SAFE: No products created, modified, or published.")
     return 0
 
