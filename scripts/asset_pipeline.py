@@ -182,6 +182,14 @@ def _mark_stale(ws, stale_ids: list[str]):
 # ---------------------------------------------------------------------------
 
 def run(campaign_dir: Path):
+    # KGS_RELEASE_GATE_HOLD: no Drive permissions, queue writes, or false QA
+    # approvals until item-specific KGS-QA-V2 and live duplicate checks are
+    # independently enforced. This is intentionally fail-closed.
+    raise RuntimeError(
+        "PIPELINE_BLOCKED: independent KGS-QA-V2 verification, "
+        "seller attachment readback, public URL, and live queue collision "
+        "checks are not implemented; no uploads or queue writes attempted"
+    )
     manifest_path = campaign_dir / "manifest.json"
     if not manifest_path.exists():
         print(f"PIPELINE_ERROR: {manifest_path} not found")
