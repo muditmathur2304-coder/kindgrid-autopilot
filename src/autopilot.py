@@ -24,7 +24,21 @@ EXISTING_PRODUCTS = {"KGS-001", "KGS-002", "KGS-003", "KGS-004", "KGS-005", "KGS
 QA_VERSION = "KGS-QA-V2"
 QA_FIELDS = ("ASSET_OPEN", "VISUAL", "CONTENT", "COPY", "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH")
 
-EXISTING_GUMROAD_SLUGS = {"52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator", "kindgrid-autopilot-upload-test-20261009", "weekly-meal-grocery-budget-kit", "subscription-renewal-control-kit", "paycheck-gap-playbook", "paycheck-gap-starter"}
+EXISTING_GUMROAD_SLUGS = {
+    # KGS-001 through KGS-007 — original protected set
+    "52-week-savings-challenge", "ultimate-budget-planner", "debt-payoff-accelerator",
+    "kindgrid-autopilot-upload-test-20261009", "weekly-meal-grocery-budget-kit",
+    "subscription-renewal-control-kit", "paycheck-gap-playbook", "paycheck-gap-starter",
+    # KGS-008 through KGS-023 — confirmed published 2026-10-20
+    "market-day-margin-guide", "before-you-book-booth-free",
+    "bakeslot-order-capacity-studio", "bakeslot-free-one-order-quote-check",
+    "bakebatch-weekly-production-planner", "collectflow-invoice-followup-control",
+    "unpaid-invoice-reset-free", "commission-ready-artist-playbook",
+    "before-you-quote-art-free", "depositguard-project-cash-coverage",
+    "scopepulse-revision-pricing-studio", "movemargin-moving-cash-planner",
+    "retainer-margin-studio", "retainer-one-contract-reality-check-free",
+    "market-payout-reconciler-studio", "market-payout-one-day-settlement-check-free",
+}
 TRUTHY = {"true", "1", "yes", "on"}
 
 
