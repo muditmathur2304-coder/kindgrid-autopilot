@@ -17,7 +17,8 @@ from src.paired_release import validate_tool_xlsx
 
 
 def workbook(*, count=12, art=True, sheets=2, external=False, macro=False,
-             detached=False, tiny_art=False, text_only=False, duplicate=False):
+             detached=False, tiny_art=False, text_only=False, duplicate=False,
+             sparse=False):
     """Create a real XLSX, optionally corrupting one release requirement."""
     wb = Workbook()
     ws = wb.active
@@ -26,6 +27,10 @@ def workbook(*, count=12, art=True, sheets=2, external=False, macro=False,
         ws.cell(i, 1, i)
         ws.cell(i, 2, i + 1)
         ws.cell(i, 3, "<f>A1+B1</f>" if text_only else f"=A{i}+B{i}")
+    if sparse:
+        # A legal but distant last-column/last-row cell must not force
+        # scanning 1,048,576 * 16,384 mostly empty worksheet positions.
+        ws.cell(1048576, 16384, "sparse corner")
     if sheets > 1:
         wb.create_sheet("Instructions")
     rng = random.Random(20261016)
@@ -75,6 +80,14 @@ def fake_zip_with_unattached_image_and_xml_formula_tags():
 class ToolFirstXlsxTests(unittest.TestCase):
     def test_accepts_real_interactive_illustrated_workbook(self):
         validate_tool_xlsx(workbook(), "KG-TEST")
+
+    def test_accepts_sparse_maximum_dimension_with_real_formulas(self):
+        # Regression: old iter_rows() scan would traverse 17+ billion cells.
+        validate_tool_xlsx(workbook(sparse=True), "KG-SPARSE")
+
+    def test_rejects_sparse_maximum_dimension_with_too_few_formulas(self):
+        with self.assertRaisesRegex(ValueError, "at least 10 formulas"):
+            validate_tool_xlsx(workbook(count=2, sparse=True), "KG-SPARSE")
 
     def test_rejects_fake_zip_that_old_gate_accepted(self):
         with self.assertRaisesRegex(ValueError, "invalid Excel workbook structure"):
