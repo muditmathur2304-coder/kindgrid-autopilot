@@ -24,48 +24,74 @@ MIN_NEW_ID = 8
 
 
 def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
-    """Fail closed on tool-first XLSX packages before any Gumroad mutation.
+    """Fail closed on actual, openable, illustrated formula workbooks.
 
-    This checks workbook structure and original embedded instructional artwork.
-    Arithmetic, mobile visuals, buyer demand, and native Sheets checks still
-    require independent item-specific KGS-QA-V2 PASS documentation.
+    An XLSX is not validated by ZIP filenames or raw <f> XML tags alone.
+    Loading it checks OOXML relationships; inspecting worksheet objects
+    confirms formulas and images are actually part of the workbook.
+    Independent arithmetic/edge-case and buyer QA remain mandatory.
     """
     a.require(15000 <= len(blob) <= 20_000_000,
               f"{pair_id}: primary XLSX size is implausible")
     try:
         with ZipFile(io.BytesIO(blob)) as zipped:
-            names = zipped.namelist()
-            sheets = [n for n in names if n.startswith("xl/worksheets/sheet")
-                      and n.endswith(".xml")]
-            a.require("xl/workbook.xml" in names and len(sheets) >= 2,
-                      f"{pair_id}: expected a real multi-sheet Excel workbook")
-            a.require(not any("vbaProject.bin" in n or
-                              n.startswith("xl/externalLinks/") for n in names),
+            members = zipped.infolist()
+            names = [member.filename for member in members]
+            a.require(len(names) == len(set(names)),
+                      f"{pair_id}: duplicate XLSX archive members")
+            a.require(sum(member.file_size for member in members) <= 100_000_000
+                      and all(member.file_size <= 40_000_000 for member in members),
+                      f"{pair_id}: XLSX decompression size exceeds safe limit")
+            a.require(not any("vbaproject.bin" in name.lower() or
+                              name.lower().startswith("xl/externallinks/")
+                              for name in names),
                       f"{pair_id}: macros and external links are not allowed")
-            formula_count = sum(len(re.findall(rb"<(?:[A-Za-z0-9_]+:)?f(?=\\s|>)",
-                                               zipped.read(n))) for n in sheets)
-            a.require(formula_count >= 10,
-                      f"{pair_id}: interactive XLSX requires at least 10 formulas")
-            artwork = [n for n in names if n.startswith("xl/media/") and
-                       n.lower().endswith((".png", ".jpg", ".jpeg"))]
-            a.require(bool(artwork),
-                      f"{pair_id}: no actual instructional image embedded in XLSX")
-            from PIL import Image, UnidentifiedImageError
-            suitable = 0
-            for n in artwork:
-                picture = zipped.read(n)
+            a.require(zipped.testzip() is None,
+                      f"{pair_id}: damaged XLSX archive member")
+    except BadZipFile:
+        raise ValueError(f"{pair_id}: invalid Excel workbook archive") from None
+
+    # Import locally: this dependency is used only for a staged XLSX release.
+    from openpyxl import load_workbook
+    try:
+        workbook = load_workbook(io.BytesIO(blob), read_only=False,
+                                 data_only=False, keep_links=False)
+    except Exception as exc:
+        raise ValueError(f"{pair_id}: invalid Excel workbook structure") from exc
+    try:
+        a.require(len(workbook.worksheets) >= 2,
+                  f"{pair_id}: expected a real multi-sheet Excel workbook")
+        # iter_rows() expands the full max_row * max_column rectangle.
+        # A sparse XLSX can contain one cell at XFD1048576 and otherwise
+        # only a handful of cells; traversing that rectangle is unbounded.
+        # In normal (non-read-only) openpyxl mode, _cells holds only cells
+        # instantiated from the worksheet XML, so this remains proportional
+        # to the actual workbook content rather than its declared dimensions.
+        formula_count = sum(
+            1 for sheet in workbook.worksheets
+            for cell in sheet._cells.values() if cell.data_type == "f"
+        )
+        a.require(formula_count >= 10,
+                  f"{pair_id}: interactive XLSX requires at least 10 formulas")
+        from PIL import Image, UnidentifiedImageError
+        suitable = 0
+        for sheet in workbook.worksheets:
+            # Images in xl/media/ alone can be completely unattached to sheets.
+            for illustration in sheet._images:
                 try:
+                    picture = illustration._data()
                     with Image.open(io.BytesIO(picture)) as img:
                         width, height = img.size
                         img.verify()
-                except (OSError, UnidentifiedImageError):
-                    raise ValueError(f"{pair_id}: unreadable embedded XLSX illustration")
+                except (OSError, ValueError, UnidentifiedImageError) as exc:
+                    raise ValueError(
+                        f"{pair_id}: unreadable attached XLSX illustration") from exc
                 if len(picture) >= 3000 and width >= 500 and height >= 250:
                     suitable += 1
-            a.require(suitable >= 1,
-                      f"{pair_id}: no substantial, readable embedded illustration")
-    except BadZipFile:
-        raise ValueError(f"{pair_id}: invalid Excel workbook archive") from None
+        a.require(suitable >= 1,
+                  f"{pair_id}: no substantial attached instructional illustration")
+    finally:
+        workbook.close()
 
 
 def select_ready_pairs(rows: list[dict]) -> list[tuple[dict, dict]]:
