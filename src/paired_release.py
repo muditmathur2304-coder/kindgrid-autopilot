@@ -61,10 +61,15 @@ def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
     try:
         a.require(len(workbook.worksheets) >= 2,
                   f"{pair_id}: expected a real multi-sheet Excel workbook")
+        # iter_rows() expands the full max_row * max_column rectangle.
+        # A sparse XLSX can contain one cell at XFD1048576 and otherwise
+        # only a handful of cells; traversing that rectangle is unbounded.
+        # In normal (non-read-only) openpyxl mode, _cells holds only cells
+        # instantiated from the worksheet XML, so this remains proportional
+        # to the actual workbook content rather than its declared dimensions.
         formula_count = sum(
             1 for sheet in workbook.worksheets
-            for row in sheet.iter_rows()
-            for cell in row if cell.data_type == "f"
+            for cell in sheet._cells.values() if cell.data_type == "f"
         )
         a.require(formula_count >= 10,
                   f"{pair_id}: interactive XLSX requires at least 10 formulas")
