@@ -13,14 +13,16 @@ concurrency:
   group: kindgrid-publisher
   cancel-in-progress: false
 permissions:
-  contents: read
+  contents: write
 jobs:
   publisher:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     env:
       PYTHONPATH: ${{ github.workspace }} # Ensure src/ resolves regardless of entrypoint
       GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
+      DRIVE_ASSETS_FOLDER_ID: ${{ secrets.DRIVE_ASSETS_FOLDER_ID || vars.DRIVE_ASSETS_FOLDER_ID }}
+      GOOGLE_SHEET_ID: ${{ vars.GOOGLE_SHEET_ID || '1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs' }}
       BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
       BUFFER_PINTEREST_CHANNEL_ID: ${{ secrets.BUFFER_PINTEREST_CHANNEL_ID }}
       BUFFER_ORGANIZATION_ID: ${{ secrets.BUFFER_ORGANIZATION_ID }}
@@ -64,6 +66,8 @@ jobs:
       - name: Inspect staged premium tool files and Pinterest/Gumroad access (read only)
         continue-on-error: true
         run: python -m scripts.staged_pair_preflight
+      - name: Ingest pending campaign assets into Dashboard queue (idempotent)
+        run: python -m scripts.asset_pipeline
       - name: Check Python module imports and detect approved pairs (read only)
         id: gumroad_queue
         run: python -m scripts.check_pair_queue

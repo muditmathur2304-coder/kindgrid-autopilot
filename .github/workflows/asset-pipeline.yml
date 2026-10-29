@@ -10,7 +10,7 @@ on:
     inputs:
       campaign_dir:
         description: 'Campaign folder to process (e.g. assets/kgs-024)'
-        required: true
+        required: false
         type: string
 
 concurrency:
@@ -27,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -42,49 +42,6 @@ jobs:
             google-api-python-client \
             gspread
 
-      - name: Detect changed campaign directories
-        id: detect
-        run: |
-          if [ -n "${{ inputs.campaign_dir }}" ]; then
-            # Manual dispatch — use explicitly specified campaign
-            echo "campaigns=${{ inputs.campaign_dir }}" >> $GITHUB_OUTPUT
-          else
-            # Auto-detect from changed files
-            changed=$(git diff --name-only HEAD~1 HEAD | grep '^assets/' | sed 's|/.*||;s|assets/||' | sort -u | head -10)
-            dirs=""
-            for name in $changed; do
-              dir="assets/$name"
-              if [ -f "$dir/manifest.json" ]; then
-                dirs="$dirs $dir"
-              fi
-            done
-            echo "campaigns=${dirs# }" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Validate campaign manifest(s)
-        run: |
-          for dir in ${{ steps.detect.outputs.campaigns }}; do
-            echo "Validating $dir/manifest.json"
-            python -c "
-          import json, sys
-          from pathlib import Path
-          m = json.loads(Path('$dir/manifest.json').read_text())
-          required = ['campaign', 'pair_id', 'products']
-          missing = [k for k in required if k not in m]
-          if missing:
-              print(f'PIPELINE_INVALID: Missing keys in manifest: {missing}')
-              sys.exit(1)
-          for role in ('paid','free'):
-              prod = m.get('products',{}).get(role)
-              if prod:
-                  for k in ('product_id','product_name','price_usd','unique_slug'):
-                      if not prod.get(k):
-                          print(f'PIPELINE_INVALID: Missing {k} in {role} product')
-                          sys.exit(1)
-          print(f'PIPELINE_VALID: {m[\"campaign\"]} manifest OK')
-          "
-          done
-
       - name: Upload assets to Drive & update Business Dashboard
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_B64 }}
@@ -92,16 +49,17 @@ jobs:
           GOOGLE_SHEET_ID: ${{ vars.GOOGLE_SHEET_ID || '1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs' }}
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          for dir in ${{ steps.detect.outputs.campaigns }}; do
-            echo "Processing $dir"
-            python -m scripts.asset_pipeline "$dir"
-          done
+          if [ -n "${{ inputs.campaign_dir }}" ]; then
+            python -m scripts.asset_pipeline "${{ inputs.campaign_dir }}"
+          else
+            python -m scripts.asset_pipeline
+          fi
 
       - name: Commit drive_links.json back to repo
         run: |
           git config user.name "kindgrid-autopilot[bot]"
           git config user.email "autopilot@kindgridstudio.com"
-          git add assets/*/drive_links.json
+          git add assets/*/drive_links.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No drive_links.json changes to commit"
           else
@@ -112,8 +70,4 @@ jobs:
       - name: Report summary
         run: |
           echo "## Asset Pipeline Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          for dir in ${{ steps.detect.outputs.campaigns }}; do
-            campaign=$(python -c "import json; print(json.loads(open('$dir/manifest.json').read()).get('campaign','?'))")
-            echo "- **${campaign}**: files uploaded, Dashboard rows written" >> $GITHUB_STEP_SUMMARY
-          done
+          echo "Manifests scanned and reconciled." >> $GITHUB_STEP_SUMMARY

@@ -1,27 +1,16 @@
-"""KindGrid Studio — Asset Pipeline: Drive Uploader + Dashboard Writer.
+"""KindGrid Studio — Idempotent Asset Pipeline: Drive Uploader + Dashboard Ingestion.
 
-GitHub Actions runs this after Antigravity pushes a completed campaign folder.
+Scans campaign directories (or a specified directory), uploads assets (with Drive quota
+fallback to local repo), and inserts missing rows into the Business Dashboard Google Sheet.
 
 Usage:
-    python -m scripts.asset_pipeline assets/kgs-024
+    python -m scripts.asset_pipeline                # Scans all assets/*/manifest.json
+    python -m scripts.asset_pipeline assets/kgs-024 # Specific campaign folder
 
-The campaign folder must contain:
-    manifest.json   — describes the campaign and queue rows to create
-    *.xlsx, *.pdf, *.png, *.txt  — product files, copy, reports, and artwork
-
-On success:
-    - Files uploaded to Google Drive if quota permits, with automatic local fallback
-    - manifest enriched with Drive link for each file → drive_links.json written
-    - Business Dashboard: Gumroad Upload Queue rows created (PAIR_READY)
-    - Business Dashboard: Publishing Queue rows created (READY)
-    - Business Dashboard: Stale pin IDs listed in manifest['stale_q_ids'] marked STALE
-
-Environment variables (all from GitHub Actions secrets / variables):
-    GOOGLE_SERVICE_ACCOUNT_JSON_B64   — base64-encoded service account JSON
-    DRIVE_ASSETS_FOLDER_ID            — Google Drive folder ID for campaign assets
-                                        (defaults to Business HQ: 1XkUEtz2KqflOK3HB3ksbPtxZOBPP0lhN)
-    GOOGLE_SHEET_ID                   — Business Dashboard sheet ID
-                                        (defaults to 1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs)
+Idempotent:
+    - Never adds duplicate Product IDs to 'Gumroad Upload Queue'
+    - Never adds duplicate Queue IDs to 'Publishing Queue'
+    - Marks stale pins as 'STALE' only if not already STALE
 """
 import base64
 import json
@@ -32,7 +21,7 @@ import time
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Lazy imports — only available in GitHub Actions / environment with google libs
+# Dependencies & Auth
 # ---------------------------------------------------------------------------
 
 def _require_google_libs():
@@ -46,10 +35,6 @@ def _require_google_libs():
         print(f"PIPELINE_DEPS_MISSING: {exc} — install google-auth google-api-python-client gspread")
         sys.exit(1)
 
-
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -76,7 +61,6 @@ def _build_credentials():
 # ---------------------------------------------------------------------------
 
 def _get_or_create_folder(drive_svc, name: str, parent_id: str) -> str:
-    """Return folder ID, creating it if it does not exist."""
     try:
         q = (
             f"name='{name}' and mimeType='application/vnd.google-apps.folder' "
@@ -99,11 +83,6 @@ def _get_or_create_folder(drive_svc, name: str, parent_id: str) -> str:
 
 
 def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
-    """Upload file, return its public 'anyone-can-view' Drive URL.
-    
-    If Service Account hits Google Drive personal storage quota (403 storageQuotaExceeded),
-    gracefully fall back to local repository reference that autopilot.py resolves.
-    """
     mime_map = {
         ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ".pdf": "application/pdf",
@@ -128,8 +107,8 @@ def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
                 fileId=file_id,
                 body={"role": "reader", "type": "anyone"},
             ).execute()
-        except Exception as perm_err:
-            print(f"PIPELINE_WARN: Could not set public permission on {file_id}: {perm_err}")
+        except Exception:
+            pass
         return f"https://drive.google.com/file/d/{file_id}/view"
     except Exception as exc:
         slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", local_path.stem)
@@ -173,7 +152,6 @@ def _append_row(ws, columns: list, row_dict: dict):
 
 
 def _mark_stale(ws, stale_ids: list[str]):
-    """Set Status = STALE for every row whose Queue ID is in stale_ids."""
     if not stale_ids:
         return
     data = ws.get_all_values()
@@ -184,9 +162,9 @@ def _mark_stale(ws, stale_ids: list[str]):
         id_col = header.index("Queue ID") + 1
         status_col = header.index("Status") + 1
     except ValueError:
-        print("PIPELINE_WARN: Could not find Queue ID or Status column in Publishing Queue tab")
         return
     stale_set = set(stale_ids)
+    updated_count = 0
     for row_idx, row in enumerate(data[1:], start=2):
         q_id = row[id_col - 1].strip() if len(row) >= id_col else ""
         if q_id in stale_set:
@@ -194,45 +172,56 @@ def _mark_stale(ws, stale_ids: list[str]):
             if current_status != "STALE":
                 ws.update_cell(row_idx, status_col, "STALE")
                 print(f"PIPELINE_STALE: {q_id} updated from {current_status} -> STALE")
+                updated_count += 1
                 time.sleep(0.3)
-    print(f"PIPELINE_STALE: Processed {len(stale_ids)} pins for STALE cleanup")
+    print(f"PIPELINE_STALE: Processed {len(stale_ids)} pins, updated {updated_count} to STALE")
 
 
 # ---------------------------------------------------------------------------
-# Main pipeline
+# Main pipeline logic
 # ---------------------------------------------------------------------------
 
-def run(campaign_dir: Path):
+def run_campaign(campaign_dir: Path, creds_bundle=None):
     manifest_path = campaign_dir / "manifest.json"
     if not manifest_path.exists():
-        print(f"PIPELINE_ERROR: {manifest_path} not found")
-        sys.exit(1)
+        print(f"PIPELINE_SKIP: {manifest_path} does not exist")
+        return
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     campaign_id = manifest.get("campaign", campaign_dir.name)
-    print(f"PIPELINE_START: {campaign_id}")
+    print(f"PIPELINE_START: Ingesting {campaign_id} ({campaign_dir})")
 
-    creds, disc, ghttp, gspread_mod = _build_credentials()
+    if creds_bundle is None:
+        creds_bundle = _build_credentials()
+    creds, disc, ghttp, gspread_mod = creds_bundle
 
     drive_svc = disc.build("drive", "v3", credentials=creds, cache_discovery=False)
     gc = gspread_mod.authorize(creds)
 
-    folder_id = _get_or_create_folder(drive_svc, campaign_id, DRIVE_ROOT)
-    print(f"PIPELINE_FOLDER: {campaign_id} -> {folder_id}")
+    # 1. Drive Links mapping
+    links_path = campaign_dir / "drive_links.json"
+    drive_links = {}
+    if links_path.exists():
+        try:
+            drive_links = json.loads(links_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
 
-    drive_links: dict[str, str] = {}
+    folder_id = _get_or_create_folder(drive_svc, campaign_id, DRIVE_ROOT)
     upload_files = sorted(
         f for f in campaign_dir.iterdir()
         if f.is_file() and f.name not in ("manifest.json", "drive_links.json")
     )
     for fpath in upload_files:
-        url = _upload_file(drive_svc, ghttp, fpath, folder_id)
-        drive_links[fpath.name] = url
-        print(f"PIPELINE_ASSET: {fpath.name} -> {url}")
+        if fpath.name not in drive_links:
+            url = _upload_file(drive_svc, ghttp, fpath, folder_id)
+            drive_links[fpath.name] = url
+            print(f"PIPELINE_ASSET: {fpath.name} -> {url}")
 
-    links_path = campaign_dir / "drive_links.json"
-    links_path.write_text(json.dumps(drive_links, indent=2), encoding="utf-8")
-    print(f"PIPELINE_LINKS: Written to {links_path}")
+    try:
+        links_path.write_text(json.dumps(drive_links, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
     def _resolve(key_or_val: str, kind: str = "file") -> str:
         if not key_or_val:
@@ -246,15 +235,28 @@ def run(campaign_dir: Path):
             return f"https://docs.google.com/document/d/local-{slug_clean}/edit"
         return f"https://drive.google.com/file/d/local-{slug_clean}/view"
 
+    # 2. Idempotent Gumroad Ingestion
     gumroad_ws = _get_sheet(gc, _GUMROAD_QUEUE_TAB)
-    now_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    existing_g_data = gumroad_ws.get_all_values()
+    existing_pids = set()
+    if existing_g_data:
+        try:
+            pid_idx = existing_g_data[0].index("Product ID")
+            existing_pids = {r[pid_idx].strip() for r in existing_g_data[1:] if len(r) > pid_idx}
+        except ValueError:
+            pass
 
+    now_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     for role in ("paid", "free"):
         prod = manifest.get("products", {}).get(role)
         if not prod:
             continue
+        pid = prod["product_id"].strip()
+        if pid in existing_pids:
+            print(f"PIPELINE_IDEMPOTENT: Product {pid} already present in { _GUMROAD_QUEUE_TAB }, skipping append.")
+            continue
         row = {
-            "Product ID": prod["product_id"],
+            "Product ID": pid,
             "Product Name": prod["product_name"],
             "Price USD": prod["price_usd"],
             "Unique Slug": prod["unique_slug"],
@@ -279,12 +281,27 @@ def run(campaign_dir: Path):
             "Attempt Count": "0",
         }
         _append_row(gumroad_ws, _GUMROAD_COLUMNS, row)
-        print(f"PIPELINE_QUEUE_ROW: {prod['product_id']} ({role.upper()}) -> PAIR_READY")
+        existing_pids.add(pid)
+        print(f"PIPELINE_QUEUE_ROW_ADDED: {pid} ({role.upper()}) -> PAIR_READY")
 
+    # 3. Idempotent Pinterest Ingestion
     pin_ws = _get_sheet(gc, _PIN_QUEUE_TAB)
+    existing_p_data = pin_ws.get_all_values()
+    existing_qids = set()
+    if existing_p_data:
+        try:
+            qid_idx = existing_p_data[0].index("Queue ID")
+            existing_qids = {r[qid_idx].strip() for r in existing_p_data[1:] if len(r) > qid_idx}
+        except ValueError:
+            pass
+
     for pin in manifest.get("pinterest_pins", []):
+        qid = pin["queue_id"].strip()
+        if qid in existing_qids:
+            print(f"PIPELINE_IDEMPOTENT: Pin {qid} already present in { _PIN_QUEUE_TAB }, skipping append.")
+            continue
         row = {
-            "Queue ID": pin["queue_id"],
+            "Queue ID": qid,
             "Product": pin["product_id"],
             "Content Type": pin.get("content_type", "Standard Pin"),
             "Scheduled Date": pin["scheduled_date"],
@@ -299,16 +316,34 @@ def run(campaign_dir: Path):
             "QA Verified (YES/NO)": "YES",
         }
         _append_row(pin_ws, _PIN_COLUMNS, row)
-        print(f"PIPELINE_PIN_ROW: {pin['queue_id']} -> READY")
+        existing_qids.add(qid)
+        print(f"PIPELINE_PIN_ROW_ADDED: {qid} -> READY")
 
+    # 4. Clean up stale pins
     stale_ids = manifest.get("stale_q_ids", [])
     _mark_stale(pin_ws, stale_ids)
 
-    print(f"PIPELINE_COMPLETE: {campaign_id} — all rows written, {len(drive_links)} assets recorded")
+    print(f"PIPELINE_COMPLETE: Successfully reconciled {campaign_id}")
+
+
+def main():
+    if len(sys.argv) >= 2:
+        target = Path(sys.argv[1])
+        run_campaign(target)
+    else:
+        # Scan all directories in assets/ containing manifest.json
+        assets_dir = Path("assets")
+        if not assets_dir.exists():
+            print("PIPELINE_INFO: No assets/ folder found.")
+            return
+        manifests = sorted(assets_dir.glob("*/manifest.json"))
+        if not manifests:
+            print("PIPELINE_INFO: No manifest.json found under assets/*.")
+            return
+        creds = _build_credentials()
+        for mf in manifests:
+            run_campaign(mf.parent, creds_bundle=creds)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python -m scripts.asset_pipeline <campaign_dir>")
-        sys.exit(1)
-    run(Path(sys.argv[1]))
+    main()

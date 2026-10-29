@@ -1,0 +1,20 @@
+name: KindGrid Scheduled Workflows Keepalive
+
+on:
+  schedule:
+    - cron: '0 0 1,15 * *'  # 1st and 15th of every month at midnight UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  keepalive:
+    name: GitHub Actions Cron Keepalive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Keep workflows alive
+        uses: gautamkrishnar/keepalive-workflow@v2
