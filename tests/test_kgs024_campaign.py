@@ -78,14 +78,18 @@ class KGS024CampaignTests(unittest.TestCase):
             "QA Report Drive Link": "https://docs.google.com/document/d/local-kgs024-qa-report/edit",
             "QA Audited UTC": "2026-10-29T12:00:00Z"
         }
-        a.verify_qa_report(store, row_paid, "KGS-024")
+        # Local fixture files can be inspected in CI, but they are not real
+        # Google Docs and must NEVER authorize a customer release.
+        with self.assertRaisesRegex(ValueError, "Synthetic local-"):
+            a.verify_qa_report(store, row_paid, "KGS-024")
 
         row_free = {
             "QA Version": "KGS-QA-V2", "QA Outcome": "PASS",
             "QA Report Drive Link": "https://docs.google.com/document/d/local-kgs025-qa-report/edit",
             "QA Audited UTC": "2026-10-29T12:00:00Z"
         }
-        a.verify_qa_report(store, row_free, "KGS-025")
+        with self.assertRaisesRegex(ValueError, "Synthetic local-"):
+            a.verify_qa_report(store, row_free, "KGS-025")
 
 
 if __name__ == "__main__":
