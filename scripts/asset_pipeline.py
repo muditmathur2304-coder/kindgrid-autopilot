@@ -78,8 +78,9 @@ def _get_or_create_folder(drive_svc, name: str, parent_id: str) -> str:
         folder = drive_svc.files().create(body=meta, fields="id").execute()
         return folder["id"]
     except Exception as exc:
-        print(f"PIPELINE_WARN: Could not create Drive subfolder '{name}': {exc}. Using parent.")
-        return parent_id
+        raise RuntimeError(
+            f"PIPELINE_BLOCKED: cannot verify writable Drive folder '{name}'"
+        ) from exc
 
 
 def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
@@ -102,18 +103,16 @@ def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
             .execute()
         )
         file_id = uploaded["id"]
-        try:
-            drive_svc.permissions().create(
-                fileId=file_id,
-                body={"role": "reader", "type": "anyone"},
-            ).execute()
-        except Exception:
-            pass
+        # A missing permission is not success. No synthetic local-* URLs.
+        drive_svc.permissions().create(
+            fileId=file_id,
+            body={"role": "reader", "type": "anyone"},
+        ).execute()
         return f"https://drive.google.com/file/d/{file_id}/view"
     except Exception as exc:
-        slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", local_path.stem)
-        print(f"PIPELINE_STORAGE_FALLBACK: Drive upload for {local_path.name} hit quota/error ({exc}). Using local fallback: local-{slug_clean}")
-        return f"https://drive.google.com/file/d/local-{slug_clean}/view"
+        raise RuntimeError(
+            f"PIPELINE_BLOCKED: Drive upload/read permission unverified for {local_path.name}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -153,29 +152,10 @@ def _append_row(ws, columns: list, row_dict: dict):
 
 
 def _mark_stale(ws, stale_ids: list[str]):
-    if not stale_ids:
-        return
-    data = ws.get_all_values()
-    if not data:
-        return
-    header = data[0]
-    try:
-        id_col = header.index("Queue ID") + 1
-        status_col = header.index("Status") + 1
-    except ValueError:
-        return
-    stale_set = set(stale_ids)
-    updated_count = 0
-    for row_idx, row in enumerate(data[1:], start=2):
-        q_id = row[id_col - 1].strip() if len(row) >= id_col else ""
-        if q_id in stale_set:
-            current_status = row[status_col - 1].strip() if len(row) >= status_col else ""
-            if current_status != "STALE":
-                ws.update_cell(row_idx, status_col, "STALE")
-                print(f"PIPELINE_STALE: {q_id} updated from {current_status} -> STALE")
-                updated_count += 1
-                time.sleep(0.3)
-    print(f"PIPELINE_STALE: Processed {len(stale_ids)} pins, updated {updated_count} to STALE")
+    """Historical status is provider evidence; a manifest must not rewrite it."""
+    if stale_ids:
+        print(f"PIPELINE_STALE_BLOCKED: {len(stale_ids)} historical queue IDs "
+              "require individual provider reconciliation; no statuses changed")
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +167,17 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
     if not manifest_path.exists():
         print(f"PIPELINE_SKIP: {manifest_path} does not exist")
         return
+
+    # TEMPORARY RELEASE-INTEGRITY HOLD (2026-10-30).
+    # A manifest, local fixture or passing unit test cannot certify a native
+    # Google Doc, actual Drive readback, customer deliverable, or Pinterest
+    # board. The prior uploader wrote PAIR_READY/READY/PASS and rewrote
+    # historical rows after Drive returned HTTP 403. Never mutate Sheets or
+    # attempt an upload until an independently verified, fail-closed
+    # authorization path is implemented and tested.
+    print("PIPELINE_RELEASE_GATE_BLOCKED: ingestion paused; no Drive, "
+          "Dashboard, historical queue, or seller mutations")
+    return
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     campaign_id = manifest.get("campaign", campaign_dir.name)
@@ -225,21 +216,26 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
         pass
 
     def _resolve(key_or_val: str, kind: str = "file") -> str:
+        """Resolve only genuine uploaded URLs, never synthetic local IDs."""
         if not key_or_val:
             return ""
         url = drive_links.get(key_or_val, key_or_val)
-        if not url.startswith("http"):
-            slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", Path(key_or_val).stem)
-            if kind == "document":
-                url = f"https://docs.google.com/document/d/local-{slug_clean}/edit"
-            else:
-                url = f"https://drive.google.com/file/d/local-{slug_clean}/view"
-
-        # If document kind is requested, ensure it follows docs.google.com/document/d/.../edit
+        if "local-" in url.lower():
+            raise ValueError("PIPELINE_BLOCKED: synthetic local-* asset URL")
         if kind == "document":
-            m_file = re.search(r"/(?:file|document)/d/([A-Za-z0-9_-]+)", url)
-            if m_file:
-                return f"https://docs.google.com/document/d/{m_file.group(1)}/edit"
+            if not re.fullmatch(
+                r"https://docs\\.google\\.com/document/d/[A-Za-z0-9_-]{20,}/(?:edit|view)/?",
+                url,
+            ):
+                raise ValueError(
+                    "PIPELINE_BLOCKED: native Google Doc not verified; "
+                    "uploading a TXT file does not create a Google Doc"
+                )
+        elif not re.fullmatch(
+            r"https://drive\\.google\\.com/file/d/[A-Za-z0-9_-]{20,}/view/?",
+            url,
+        ):
+            raise ValueError("PIPELINE_BLOCKED: genuine Drive file URL missing")
         return url
 
     # 2. Idempotent Gumroad Ingestion
@@ -288,12 +284,12 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
             "PDF Drive Link": _resolve(prod.get("pdf_file", "")),
             "Cover Drive Link": _resolve(prod.get("cover_file", "")),
             "Listing Copy Drive Link": _resolve(prod.get("listing_copy_file", prod.get("listing_copy_doc_url", "")), "document"),
-            "QA Verified (YES/NO)": "YES",
-            "Upload Status": "PAIR_READY",
+            "QA Verified (YES/NO)": "NO",
+            "Upload Status": "REVIEW",
             "QA Version": "KGS-QA-V2",
             "QA Report Drive Link": _resolve(prod.get("qa_report_file", prod.get("qa_report_url", "")), "document"),
             "QA Audited UTC": prod.get("qa_audited_utc", now_utc),
-            "QA Outcome": "PASS",
+            "QA Outcome": "BLOCKED",
             "Pair ID": manifest.get("pair_id", ""),
             "Pair Role": role.upper(),
             "Paired Product ID": prod.get("paired_product_id", ""),
@@ -347,24 +343,8 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
         qa_audited = pin.get("qa_audited_utc", now_utc)
 
         if qid in existing_rows_by_qid:
-            r_idx, r_vals = existing_rows_by_qid[qid]
-            cur_ver = r_vals[qa_ver_idx].strip() if qa_ver_idx != -1 and len(r_vals) > qa_ver_idx else ""
-            cur_doc = r_vals[qa_rep_idx].strip() if qa_rep_idx != -1 and len(r_vals) > qa_rep_idx else ""
-            if cur_ver != "KGS-QA-V2" or "/file/d/" in cur_doc:
-                if qa_ok_idx != -1:
-                    pin_ws.update_cell(r_idx, qa_ok_idx + 1, "YES")
-                if qa_ver_idx != -1:
-                    pin_ws.update_cell(r_idx, qa_ver_idx + 1, "KGS-QA-V2")
-                if qa_out_idx != -1:
-                    pin_ws.update_cell(r_idx, qa_out_idx + 1, "PASS")
-                if qa_rep_idx != -1:
-                    pin_ws.update_cell(r_idx, qa_rep_idx + 1, qa_doc)
-                if qa_utc_idx != -1:
-                    pin_ws.update_cell(r_idx, qa_utc_idx + 1, qa_audited)
-                print(f"PIPELINE_PIN_QA_UPDATED: {qid} backfilled with KGS-QA-V2 metadata & doc URL")
-                time.sleep(0.3)
-            else:
-                print(f"PIPELINE_IDEMPOTENT: Pin {qid} already verified in {_PIN_QUEUE_TAB}, skipping.")
+            print(f"PIPELINE_IDEMPOTENT: Pin {qid} already exists; "
+                  "historical QA and status fields remain untouched.")
             continue
 
         row = {
@@ -378,13 +358,13 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
             "Pin Title": pin["pin_title"],
             "Pin Description": pin["pin_description"],
             "Destination URL": pin["destination_url"],
-            "Status": "READY",
+            "Status": "BRIEF_ONLY",
             "Pin Image Drive Link": _resolve(pin.get("image_file", "")),
-            "QA Verified (YES/NO)": "YES",
+            "QA Verified (YES/NO)": "NO",
             "QA Version": "KGS-QA-V2",
             "QA Report Drive Link": qa_doc,
             "QA Audited UTC": qa_audited,
-            "QA Outcome": "PASS",
+            "QA Outcome": "BLOCKED",
         }
         _append_row(pin_ws, header, row)
         existing_qids.add(qid)
