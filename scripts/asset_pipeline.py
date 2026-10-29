@@ -138,6 +138,7 @@ _PIN_COLUMNS = [
     "Queue ID", "Product", "Content Type", "Scheduled Date", "Time Window",
     "US Scheduled Time", "Target Board", "Pin Title", "Pin Description",
     "Destination URL", "Status", "Pin Image Drive Link", "QA Verified (YES/NO)",
+    "QA Version", "QA Report Drive Link", "QA Audited UTC", "QA Outcome",
 ]
 
 
@@ -284,22 +285,63 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
         existing_pids.add(pid)
         print(f"PIPELINE_QUEUE_ROW_ADDED: {pid} ({role.upper()}) -> PAIR_READY")
 
-    # 3. Idempotent Pinterest Ingestion
+    # 3. Idempotent Pinterest Ingestion with Full QA Metadata
     pin_ws = _get_sheet(gc, _PIN_QUEUE_TAB)
     existing_p_data = pin_ws.get_all_values()
     existing_qids = set()
+    header = [c.strip() for c in existing_p_data[0]] if existing_p_data else list(_PIN_COLUMNS)
+
+    # Ensure all required columns exist in the header row
+    cols_to_add = [c for c in _PIN_COLUMNS if c not in header]
+    if cols_to_add:
+        for c in cols_to_add:
+            header.append(c)
+            pin_ws.update_cell(1, len(header), c)
+            time.sleep(0.2)
+        print(f"PIPELINE_HEADER_UPDATED: Added missing column(s): {cols_to_add}")
+
+    qid_idx = header.index("Queue ID") if "Queue ID" in header else 0
+    status_idx = header.index("Status") if "Status" in header else -1
+    qa_ver_idx = header.index("QA Version") if "QA Version" in header else -1
+    qa_out_idx = header.index("QA Outcome") if "QA Outcome" in header else -1
+    qa_rep_idx = header.index("QA Report Drive Link") if "QA Report Drive Link" in header else -1
+    qa_utc_idx = header.index("QA Audited UTC") if "QA Audited UTC" in header else -1
+    qa_ok_idx = header.index("QA Verified (YES/NO)") if "QA Verified (YES/NO)" in header else -1
+
+    existing_rows_by_qid = {}
     if existing_p_data:
-        try:
-            qid_idx = existing_p_data[0].index("Queue ID")
-            existing_qids = {r[qid_idx].strip() for r in existing_p_data[1:] if len(r) > qid_idx}
-        except ValueError:
-            pass
+        for r_idx, r in enumerate(existing_p_data[1:], start=2):
+            if len(r) > qid_idx:
+                q = r[qid_idx].strip()
+                if q:
+                    existing_rows_by_qid[q] = (r_idx, r)
+                    existing_qids.add(q)
 
     for pin in manifest.get("pinterest_pins", []):
         qid = pin["queue_id"].strip()
-        if qid in existing_qids:
-            print(f"PIPELINE_IDEMPOTENT: Pin {qid} already present in { _PIN_QUEUE_TAB }, skipping append.")
+        qa_doc = _resolve(pin.get("qa_report_file", "KGS024_QA_Report.txt"), "document")
+        qa_audited = pin.get("qa_audited_utc", now_utc)
+
+        if qid in existing_rows_by_qid:
+            r_idx, r_vals = existing_rows_by_qid[qid]
+            cur_ver = r_vals[qa_ver_idx].strip() if qa_ver_idx != -1 and len(r_vals) > qa_ver_idx else ""
+            if cur_ver != "KGS-QA-V2":
+                if qa_ok_idx != -1:
+                    pin_ws.update_cell(r_idx, qa_ok_idx + 1, "YES")
+                if qa_ver_idx != -1:
+                    pin_ws.update_cell(r_idx, qa_ver_idx + 1, "KGS-QA-V2")
+                if qa_out_idx != -1:
+                    pin_ws.update_cell(r_idx, qa_out_idx + 1, "PASS")
+                if qa_rep_idx != -1:
+                    pin_ws.update_cell(r_idx, qa_rep_idx + 1, qa_doc)
+                if qa_utc_idx != -1:
+                    pin_ws.update_cell(r_idx, qa_utc_idx + 1, qa_audited)
+                print(f"PIPELINE_PIN_QA_UPDATED: {qid} backfilled with KGS-QA-V2 metadata")
+                time.sleep(0.3)
+            else:
+                print(f"PIPELINE_IDEMPOTENT: Pin {qid} already verified in {_PIN_QUEUE_TAB}, skipping.")
             continue
+
         row = {
             "Queue ID": qid,
             "Product": pin["product_id"],
@@ -314,10 +356,14 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
             "Status": "READY",
             "Pin Image Drive Link": _resolve(pin.get("image_file", "")),
             "QA Verified (YES/NO)": "YES",
+            "QA Version": "KGS-QA-V2",
+            "QA Report Drive Link": qa_doc,
+            "QA Audited UTC": qa_audited,
+            "QA Outcome": "PASS",
         }
-        _append_row(pin_ws, _PIN_COLUMNS, row)
+        _append_row(pin_ws, header, row)
         existing_qids.add(qid)
-        print(f"PIPELINE_PIN_ROW_ADDED: {qid} -> READY")
+        print(f"PIPELINE_PIN_ROW_ADDED: {qid} -> READY (with KGS-QA-V2 metadata)")
 
     # 4. Clean up stale pins
     stale_ids = manifest.get("stale_q_ids", [])

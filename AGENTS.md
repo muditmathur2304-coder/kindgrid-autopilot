@@ -165,8 +165,20 @@ To resume: set `AUTOPILOT_PAUSED = false` (or delete the variable) and re-enable
 
 ---
 
+## Permanent Autonomous Operations Loop
+
+KindGrid Studio operates under full end-to-end autonomous execution with zero manual owner involvement:
+
+1. **Autonomous Git Operations**: Headless Git operations authenticate silently via the configured credential helper. Never ask the non-coder owner to push via GitHub Desktop or run terminal commands.
+2. **Automated Asset Ingestion**: Asset generation deposits files in `assets/kgs-XXX/` with a corresponding `manifest.json`. GitHub Actions (`publisher.yml` and `asset-pipeline.yml`) automatically reconciles the manifest, handles Drive quota with resilient fallbacks, populates `Gumroad Upload Queue` and `Publishing Queue`, and marks stale pins.
+3. **Automated Keepalive**: Scheduled workflow `.github/workflows/keepalive.yml` automatically ensures cron triggers in `.github/workflows/publisher.yml` remain active indefinitely beyond GitHub's 60-day inactivity limit.
+4. **Daily Autonomous Schedule**: Antigravity runs on a recurring schedule to inspect the live dashboard, maintain queue volume, design next-generation spreadsheet tools and illustrated guides, verify quality gates (KGS-QA-V2), and commit/push updates silently.
+
+---
+
 ## Version History of This File
 
 | Date | Change |
 |------|--------|
 | 2026-10-20 | Initial creation by Antigravity Phase 1 audit |
+| 2026-10-29 | Integrated fully autonomous pipeline, headless git credentials, Actions keepalive, and recurring Antigravity operator loop |
