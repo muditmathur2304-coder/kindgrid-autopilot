@@ -227,19 +227,26 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
     def _resolve(key_or_val: str, kind: str = "file") -> str:
         if not key_or_val:
             return ""
-        if key_or_val.startswith("http"):
-            return key_or_val
-        if key_or_val in drive_links:
-            return drive_links[key_or_val]
-        slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", Path(key_or_val).stem)
+        url = drive_links.get(key_or_val, key_or_val)
+        if not url.startswith("http"):
+            slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", Path(key_or_val).stem)
+            if kind == "document":
+                url = f"https://docs.google.com/document/d/local-{slug_clean}/edit"
+            else:
+                url = f"https://drive.google.com/file/d/local-{slug_clean}/view"
+
+        # If document kind is requested, ensure it follows docs.google.com/document/d/.../edit
         if kind == "document":
-            return f"https://docs.google.com/document/d/local-{slug_clean}/edit"
-        return f"https://drive.google.com/file/d/local-{slug_clean}/view"
+            m_file = re.search(r"/(?:file|document)/d/([A-Za-z0-9_-]+)", url)
+            if m_file:
+                return f"https://docs.google.com/document/d/{m_file.group(1)}/edit"
+        return url
 
     # 2. Idempotent Gumroad Ingestion
     gumroad_ws = _get_sheet(gc, _GUMROAD_QUEUE_TAB)
     existing_g_data = gumroad_ws.get_all_values()
     existing_pids = set()
+    pid_idx = 0
     if existing_g_data:
         try:
             pid_idx = existing_g_data[0].index("Product ID")
@@ -254,7 +261,24 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
             continue
         pid = prod["product_id"].strip()
         if pid in existing_pids:
-            print(f"PIPELINE_IDEMPOTENT: Product {pid} already present in { _GUMROAD_QUEUE_TAB }, skipping append.")
+            # Reconcile document links if they were previously written with /file/d/
+            for r_idx, r in enumerate(existing_g_data[1:], start=2):
+                if len(r) > pid_idx and r[pid_idx].strip() == pid:
+                    for col_name, field_val, k_type in [
+                        ("Listing Copy Drive Link", prod.get("listing_copy_file", prod.get("listing_copy_doc_url", "")), "document"),
+                        ("QA Report Drive Link", prod.get("qa_report_file", prod.get("qa_report_url", "")), "document"),
+                        ("Demand Evidence Doc Link", manifest.get("demand_evidence_file", manifest.get("demand_evidence_url", "")), "document"),
+                    ]:
+                        if col_name in existing_g_data[0]:
+                            c_idx = existing_g_data[0].index(col_name)
+                            if len(r) > c_idx:
+                                cur_val = r[c_idx].strip()
+                                new_val = _resolve(field_val, k_type)
+                                if "/file/d/" in cur_val and new_val:
+                                    gumroad_ws.update_cell(r_idx, c_idx + 1, new_val)
+                                    print(f"PIPELINE_GUMROAD_DOC_UPDATED: {pid} {col_name} -> {new_val}")
+                                    time.sleep(0.3)
+            print(f"PIPELINE_IDEMPOTENT: Product {pid} already present in {_GUMROAD_QUEUE_TAB}.")
             continue
         row = {
             "Product ID": pid,
@@ -325,7 +349,8 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
         if qid in existing_rows_by_qid:
             r_idx, r_vals = existing_rows_by_qid[qid]
             cur_ver = r_vals[qa_ver_idx].strip() if qa_ver_idx != -1 and len(r_vals) > qa_ver_idx else ""
-            if cur_ver != "KGS-QA-V2":
+            cur_doc = r_vals[qa_rep_idx].strip() if qa_rep_idx != -1 and len(r_vals) > qa_rep_idx else ""
+            if cur_ver != "KGS-QA-V2" or "/file/d/" in cur_doc:
                 if qa_ok_idx != -1:
                     pin_ws.update_cell(r_idx, qa_ok_idx + 1, "YES")
                 if qa_ver_idx != -1:
@@ -336,7 +361,7 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
                     pin_ws.update_cell(r_idx, qa_rep_idx + 1, qa_doc)
                 if qa_utc_idx != -1:
                     pin_ws.update_cell(r_idx, qa_utc_idx + 1, qa_audited)
-                print(f"PIPELINE_PIN_QA_UPDATED: {qid} backfilled with KGS-QA-V2 metadata")
+                print(f"PIPELINE_PIN_QA_UPDATED: {qid} backfilled with KGS-QA-V2 metadata & doc URL")
                 time.sleep(0.3)
             else:
                 print(f"PIPELINE_IDEMPOTENT: Pin {qid} already verified in {_PIN_QUEUE_TAB}, skipping.")
