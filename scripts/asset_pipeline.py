@@ -224,7 +224,7 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
             raise ValueError("PIPELINE_BLOCKED: synthetic local-* asset URL")
         if kind == "document":
             if not re.fullmatch(
-                r"https://docs\\.google\\.com/document/d/[A-Za-z0-9_-]{20,}/(?:edit|view)/?",
+                r"https://docs\.google\.com/document/d/[A-Za-z0-9_-]{20,}/(?:edit|view)/?",
                 url,
             ):
                 raise ValueError(
@@ -232,7 +232,7 @@ def run_campaign(campaign_dir: Path, creds_bundle=None):
                     "uploading a TXT file does not create a Google Doc"
                 )
         elif not re.fullmatch(
-            r"https://drive\\.google\\.com/file/d/[A-Za-z0-9_-]{20,}/view/?",
+            r"https://drive\.google\.com/file/d/[A-Za-z0-9_-]{20,}/view/?",
             url,
         ):
             raise ValueError("PIPELINE_BLOCKED: genuine Drive file URL missing")
