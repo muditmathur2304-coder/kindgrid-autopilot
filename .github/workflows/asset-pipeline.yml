@@ -17,6 +17,9 @@ concurrency:
   group: asset-pipeline
   cancel-in-progress: false   # never cancel a running upload mid-flight
 
+permissions:
+  contents: write
+
 jobs:
   upload-and-queue:
     name: Upload to Drive & write Dashboard rows
@@ -64,7 +67,7 @@ jobs:
             echo "No drive_links.json changes to commit"
           else
             git commit -m "chore(pipeline): add drive_links.json for uploaded assets [skip ci]"
-            git push origin HEAD
+            git push origin HEAD || echo "Warning: git push of drive_links.json skipped"
           fi
 
       - name: Report summary
