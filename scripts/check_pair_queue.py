@@ -9,7 +9,14 @@ def main():
         amount = 0
     else:
         rows = a.GoogleStore().get_rows("Gumroad Upload Queue")
-        amount = len(select_ready_pairs(rows))
+        try:
+            amount = len(select_ready_pairs(rows))
+        except ValueError as error:
+            # A forged/invalid QA link must never install a seller CLI or
+            # abort the entire scheduled job before independent Pin checks.
+            # Leave source rows unchanged for explicit QA reconciliation.
+            print(f"PAIR_PREFLIGHT_BLOCKED: {error}; no seller action")
+            amount = 0
     needed = "true" if amount else "false"
     print("PAIR_PREFLIGHT: %s complete validated pair(s); needs_cli=%s" % (amount, needed))
     if os.getenv("GITHUB_OUTPUT"):

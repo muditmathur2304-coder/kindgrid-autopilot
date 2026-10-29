@@ -319,7 +319,12 @@ def published_today_count(gumrows: list[dict], *, now: datetime | None = None) -
 
 
 def run_ready_pair_cycle(store, gumrows: list[dict]) -> list[str]:
-    approved = select_ready_pairs(gumrows)
+    try:
+        approved = select_ready_pairs(gumrows)
+    except ValueError as error:
+        # Bad PAIR_READY metadata is not an exception to the no-publish gate.
+        # Preserve the rows and prevent *all* seller mutations for this cycle.
+        return [f"PAIR_RELEASE_BLOCKED: {error}; no Gumroad mutation"]
     if not approved:
         return ["PAIR_RELEASE_IDLE: No fully QA-approved PAID+FREE pair ready"]
     # The owner asked for a target of 7 Gumroad LISTINGS / NY calendar day.
