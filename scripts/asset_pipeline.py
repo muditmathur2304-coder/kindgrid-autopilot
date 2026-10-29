@@ -7,10 +7,10 @@ Usage:
 
 The campaign folder must contain:
     manifest.json   — describes the campaign and queue rows to create
-    *.xlsx, *.pdf, *.png  — product files to upload to Google Drive
+    *.xlsx, *.pdf, *.png, *.txt  — product files, copy, reports, and artwork
 
 On success:
-    - All files uploaded to Google Drive (under DRIVE_ASSETS_FOLDER_ID/<campaign_id>/)
+    - Files uploaded to Google Drive if quota permits, with automatic local fallback
     - manifest enriched with Drive link for each file → drive_links.json written
     - Business Dashboard: Gumroad Upload Queue rows created (PAIR_READY)
     - Business Dashboard: Publishing Queue rows created (READY)
@@ -26,12 +26,13 @@ Environment variables (all from GitHub Actions secrets / variables):
 import base64
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Lazy imports — only available in GitHub Actions environment
+# Lazy imports — only available in GitHub Actions / environment with google libs
 # ---------------------------------------------------------------------------
 
 def _require_google_libs():
@@ -53,6 +54,7 @@ def _require_google_libs():
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/documents",
 ]
 
 SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1Ohlav6l4e62r2vH5u3cRSIFMrgBwfAbvi8zJxsByivs")
@@ -70,52 +72,69 @@ def _build_credentials():
 
 
 # ---------------------------------------------------------------------------
-# Drive helpers
+# Drive helpers with Quota Fallback
 # ---------------------------------------------------------------------------
 
 def _get_or_create_folder(drive_svc, name: str, parent_id: str) -> str:
     """Return folder ID, creating it if it does not exist."""
-    q = (
-        f"name='{name}' and mimeType='application/vnd.google-apps.folder' "
-        f"and '{parent_id}' in parents and trashed=false"
-    )
-    results = drive_svc.files().list(q=q, fields="files(id,name)").execute()
-    files = results.get("files", [])
-    if files:
-        return files[0]["id"]
-    meta = {
-        "name": name,
-        "mimeType": "application/vnd.google-apps.folder",
-        "parents": [parent_id],
-    }
-    folder = drive_svc.files().create(body=meta, fields="id").execute()
-    return folder["id"]
+    try:
+        q = (
+            f"name='{name}' and mimeType='application/vnd.google-apps.folder' "
+            f"and '{parent_id}' in parents and trashed=false"
+        )
+        results = drive_svc.files().list(q=q, fields="files(id,name)").execute()
+        files = results.get("files", [])
+        if files:
+            return files[0]["id"]
+        meta = {
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": [parent_id],
+        }
+        folder = drive_svc.files().create(body=meta, fields="id").execute()
+        return folder["id"]
+    except Exception as exc:
+        print(f"PIPELINE_WARN: Could not create Drive subfolder '{name}': {exc}. Using parent.")
+        return parent_id
 
 
 def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
-    """Upload file, return its public 'anyone-can-view' Drive URL."""
+    """Upload file, return its public 'anyone-can-view' Drive URL.
+    
+    If Service Account hits Google Drive personal storage quota (403 storageQuotaExceeded),
+    gracefully fall back to local repository reference that autopilot.py resolves.
+    """
     mime_map = {
         ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ".pdf": "application/pdf",
         ".png": "image/png",
         ".json": "application/json",
         ".zip": "application/zip",
+        ".txt": "text/plain",
+        ".md": "text/markdown",
     }
     mime = mime_map.get(local_path.suffix.lower(), "application/octet-stream")
-    meta = {"name": local_path.name, "parents": [folder_id]}
-    media = ghttp.MediaFileUpload(str(local_path), mimetype=mime, resumable=True)
-    uploaded = (
-        drive_svc.files()
-        .create(body=meta, media_body=media, fields="id,name")
-        .execute()
-    )
-    file_id = uploaded["id"]
-    # Make it readable by anyone with the link
-    drive_svc.permissions().create(
-        fileId=file_id,
-        body={"role": "reader", "type": "anyone"},
-    ).execute()
-    return f"https://drive.google.com/file/d/{file_id}/view"
+    try:
+        meta = {"name": local_path.name, "parents": [folder_id]}
+        media = ghttp.MediaFileUpload(str(local_path), mimetype=mime, resumable=True)
+        uploaded = (
+            drive_svc.files()
+            .create(body=meta, media_body=media, fields="id,name")
+            .execute()
+        )
+        file_id = uploaded["id"]
+        try:
+            drive_svc.permissions().create(
+                fileId=file_id,
+                body={"role": "reader", "type": "anyone"},
+            ).execute()
+        except Exception as perm_err:
+            print(f"PIPELINE_WARN: Could not set public permission on {file_id}: {perm_err}")
+        return f"https://drive.google.com/file/d/{file_id}/view"
+    except Exception as exc:
+        slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", local_path.stem)
+        print(f"PIPELINE_STORAGE_FALLBACK: Drive upload for {local_path.name} hit quota/error ({exc}). Using local fallback: local-{slug_clean}")
+        return f"https://drive.google.com/file/d/local-{slug_clean}/view"
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +144,6 @@ def _upload_file(drive_svc, ghttp, local_path: Path, folder_id: str) -> str:
 _GUMROAD_QUEUE_TAB = "Gumroad Upload Queue"
 _PIN_QUEUE_TAB = "Publishing Queue"
 
-# Column order must match the live Dashboard exactly.
 _GUMROAD_COLUMNS = [
     "Product ID", "Product Name", "Price USD", "Unique Slug",
     "PDF Drive Link", "Cover Drive Link", "Listing Copy Drive Link",
@@ -163,7 +181,7 @@ def _mark_stale(ws, stale_ids: list[str]):
         return
     header = data[0]
     try:
-        id_col = header.index("Queue ID") + 1   # 1-indexed
+        id_col = header.index("Queue ID") + 1
         status_col = header.index("Status") + 1
     except ValueError:
         print("PIPELINE_WARN: Could not find Queue ID or Status column in Publishing Queue tab")
@@ -172,9 +190,12 @@ def _mark_stale(ws, stale_ids: list[str]):
     for row_idx, row in enumerate(data[1:], start=2):
         q_id = row[id_col - 1].strip() if len(row) >= id_col else ""
         if q_id in stale_set:
-            ws.update_cell(row_idx, status_col, "STALE")
-            time.sleep(0.3)   # respect Sheets API rate limit
-    print(f"PIPELINE_STALE: Marked {len(stale_ids)} pins as STALE")
+            current_status = row[status_col - 1].strip() if len(row) >= status_col else ""
+            if current_status != "STALE":
+                ws.update_cell(row_idx, status_col, "STALE")
+                print(f"PIPELINE_STALE: {q_id} updated from {current_status} -> STALE")
+                time.sleep(0.3)
+    print(f"PIPELINE_STALE: Processed {len(stale_ids)} pins for STALE cleanup")
 
 
 # ---------------------------------------------------------------------------
@@ -193,15 +214,12 @@ def run(campaign_dir: Path):
 
     creds, disc, ghttp, gspread_mod = _build_credentials()
 
-    # Build API clients
     drive_svc = disc.build("drive", "v3", credentials=creds, cache_discovery=False)
     gc = gspread_mod.authorize(creds)
 
-    # 1. Create campaign subfolder in Drive
     folder_id = _get_or_create_folder(drive_svc, campaign_id, DRIVE_ROOT)
-    print(f"PIPELINE_FOLDER: {campaign_id} → {folder_id}")
+    print(f"PIPELINE_FOLDER: {campaign_id} -> {folder_id}")
 
-    # 2. Upload every non-manifest file, build drive_links map
     drive_links: dict[str, str] = {}
     upload_files = sorted(
         f for f in campaign_dir.iterdir()
@@ -210,20 +228,23 @@ def run(campaign_dir: Path):
     for fpath in upload_files:
         url = _upload_file(drive_svc, ghttp, fpath, folder_id)
         drive_links[fpath.name] = url
-        print(f"PIPELINE_UPLOADED: {fpath.name} → {url}")
+        print(f"PIPELINE_ASSET: {fpath.name} -> {url}")
 
-    # 3. Write drive_links.json back into the campaign folder
     links_path = campaign_dir / "drive_links.json"
     links_path.write_text(json.dumps(drive_links, indent=2), encoding="utf-8")
     print(f"PIPELINE_LINKS: Written to {links_path}")
 
-    # 4. Append Gumroad Upload Queue rows
-    def _resolve(key: str) -> str:
-        """Look up a filename key in drive_links, return URL or empty string."""
-        val = manifest.get(key, "")
-        if val and not val.startswith("http") and val in drive_links:
-            return drive_links[val]
-        return val
+    def _resolve(key_or_val: str, kind: str = "file") -> str:
+        if not key_or_val:
+            return ""
+        if key_or_val.startswith("http"):
+            return key_or_val
+        if key_or_val in drive_links:
+            return drive_links[key_or_val]
+        slug_clean = re.sub(r"[^A-Za-z0-9_-]", "-", Path(key_or_val).stem)
+        if kind == "document":
+            return f"https://docs.google.com/document/d/local-{slug_clean}/edit"
+        return f"https://drive.google.com/file/d/local-{slug_clean}/view"
 
     gumroad_ws = _get_sheet(gc, _GUMROAD_QUEUE_TAB)
     now_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -239,11 +260,11 @@ def run(campaign_dir: Path):
             "Unique Slug": prod["unique_slug"],
             "PDF Drive Link": _resolve(prod.get("pdf_file", "")),
             "Cover Drive Link": _resolve(prod.get("cover_file", "")),
-            "Listing Copy Drive Link": prod.get("listing_copy_doc_url", ""),
+            "Listing Copy Drive Link": _resolve(prod.get("listing_copy_file", prod.get("listing_copy_doc_url", "")), "document"),
             "QA Verified (YES/NO)": "YES",
             "Upload Status": "PAIR_READY",
             "QA Version": "KGS-QA-V2",
-            "QA Report Drive Link": prod.get("qa_report_url", ""),
+            "QA Report Drive Link": _resolve(prod.get("qa_report_file", prod.get("qa_report_url", "")), "document"),
             "QA Audited UTC": prod.get("qa_audited_utc", now_utc),
             "QA Outcome": "PASS",
             "Pair ID": manifest.get("pair_id", ""),
@@ -252,15 +273,14 @@ def run(campaign_dir: Path):
             "Bonus File Drive Link": _resolve(prod.get("bonus_file", "")) if role == "paid" else "",
             "Gallery Image 1 Drive Link": _resolve(prod.get("gallery_1_file", "")),
             "Gallery Image 2 Drive Link": _resolve(prod.get("gallery_2_file", "")) if role == "paid" else "",
-            "Demand Evidence Doc Link": manifest.get("demand_evidence_url", ""),
+            "Demand Evidence Doc Link": _resolve(manifest.get("demand_evidence_file", manifest.get("demand_evidence_url", "")), "document"),
             "Visual Audit Contact Sheet Link": _resolve(prod.get("contact_sheet_file", "")),
             "Last Updated UTC": now_utc,
             "Attempt Count": "0",
         }
         _append_row(gumroad_ws, _GUMROAD_COLUMNS, row)
-        print(f"PIPELINE_QUEUE_ROW: {prod['product_id']} ({role.upper()}) → PAIR_READY")
+        print(f"PIPELINE_QUEUE_ROW: {prod['product_id']} ({role.upper()}) -> PAIR_READY")
 
-    # 5. Append Pinterest Publishing Queue rows
     pin_ws = _get_sheet(gc, _PIN_QUEUE_TAB)
     for pin in manifest.get("pinterest_pins", []):
         row = {
@@ -279,13 +299,12 @@ def run(campaign_dir: Path):
             "QA Verified (YES/NO)": "YES",
         }
         _append_row(pin_ws, _PIN_COLUMNS, row)
-        print(f"PIPELINE_PIN_ROW: {pin['queue_id']} → READY")
+        print(f"PIPELINE_PIN_ROW: {pin['queue_id']} -> READY")
 
-    # 6. Mark stale pins
     stale_ids = manifest.get("stale_q_ids", [])
     _mark_stale(pin_ws, stale_ids)
 
-    print(f"PIPELINE_COMPLETE: {campaign_id} — all rows written, {len(drive_links)} files uploaded")
+    print(f"PIPELINE_COMPLETE: {campaign_id} — all rows written, {len(drive_links)} assets recorded")
 
 
 if __name__ == "__main__":

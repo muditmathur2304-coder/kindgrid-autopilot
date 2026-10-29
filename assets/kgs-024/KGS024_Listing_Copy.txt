@@ -1,0 +1,20 @@
+BEGIN_GUMROAD_SUMMARY
+CraftMargin Studio is an interactive Excel pricing tool and 10-page guide for handmade makers and craft fair vendors to price items for in-person profit, compare margins against online platforms, and calculate their event break-even point.
+END_GUMROAD_SUMMARY
+
+BEGIN_GUMROAD_DESCRIPTION
+A crowded booth does not mean your handmade business made money.
+
+CraftMargin Studio is a purpose-built offline Excel decision tool for handmade makers, artisans, and craft fair vendors who want to price their items with confidence, cover fixed event booth fees, and know their exact break-even sales volume before booking a market weekend.
+
+Inside your instant download:
+• An interactive multi-sheet Excel pricing system (xlsx) with automated formulas for 10 craft items.
+• A fixed event overhead calculator that amortizes booth fees, travel, display, and Square transaction fees across units sold.
+• A break-even unit threshold engine showing how many items you must sell to cover expenses and pay yourself a day wage.
+• An in-person craft market vs. online/Etsy margin comparison to prevent selling at a loss.
+• An original 10-page illustrated US Letter field guide with pricing frameworks, worked maker examples, and a 7-day market prep checklist.
+
+Worked example figures are realistic fictional illustrations across candles, ceramics, woodworking, and jewelry. No macros, external links, or subscriptions required. Runs completely offline in Microsoft Excel or Google Sheets.
+
+KindGrid Studio creates functional decision tools for real-life business decisions.
+END_GUMROAD_DESCRIPTION

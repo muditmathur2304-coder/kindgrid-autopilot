@@ -1,0 +1,25 @@
+KINDGRID STUDIO — DEMAND RESEARCH & MARKET AUDIT REPORT
+CAMPAIGN: KGS-024 (CraftMargin Studio) & KGS-025 (Before You Book the Fair FREE)
+DATE: 2026-10-29 | TARGET AUDIENCE: US Handmade Makers, Artisans & Craft Fair Vendors
+
+BUYER PROBLEM:
+Handmade makers (candle makers, ceramicists, jewelry makers, woodworkers, fiber artists) frequently underprice their products when selling in person at craft fairs, farmers markets, and holiday bazaars. Sellers face high upfront fixed booth fees ($150 to $400+), transportation, Square payment fees (2.6% + $0.10), and display packaging costs. Most makers price using arbitrary rules of thumb (e.g., '2x supplies') without accounting for active crafting labor or amortizing the lump-sum booth fee across actual units sold. As a result, many vendors experience 'busy weekends' that result in net economic losses once fixed event fees and travel are subtracted.
+
+COMPETITOR:
+1. Free generic Etsy fee calculators (e.g., Craftybase free spreadsheet: https://craftybase.com/blog/etsy-fee-calculator-spreadsheet). These focus exclusively on online Etsy transaction percentages and fail to model physical event booth fees, travel, or in-person cash/card payment splits.
+2. BudgetBadger and Excello bookkeeping templates (https://thebudgetbadger.com/free-etsy-fee-calculator). These provide post-sale expense logging rather than pre-event decision pricing and break-even unit threshold modeling.
+
+DIFFERENTIATION:
+CraftMargin Studio is specifically engineered for in-person maker markets with multi-channel reconciliation. It delivers:
+1. True booth fee amortization per item based on actual market inventory capacity.
+2. A transparent labor wage floor ($20-$25/hr) treated as Cost of Goods Sold rather than residual profit.
+3. A pre-event Break-Even Unit Threshold calculator showing the exact sales count required to cover fixed costs.
+4. Clean integer rounding recommendations ($18, $24, $28) optimized for rapid in-person checkout queues.
+
+EVIDENCE:
+- Verified active search queries on Pinterest US: 'craft fair pricing calculator', 'how to price handmade items for craft shows', 'craft show booth fee break even', 'craft fair budget spreadsheet'.
+- Verified industry pricing frameworks from Craftybase guide on handmade pricing formulas: https://craftybase.com/blog/handmade-pricing-formula-craft-fairs.
+- Reddit community r/CraftFairs and r/EtsySellers show persistent weekly discussions on vendors losing money after $200-$350 booth fees due to lack of break-even math.
+
+LIMITATION:
+This workbook and guide provide financial decision modeling based on user-entered costs and estimates; they do not guarantee booth attendance, customer foot traffic, vendor acceptance, or retail sales volume. Regional market demand varies significantly by geographic market and product category.

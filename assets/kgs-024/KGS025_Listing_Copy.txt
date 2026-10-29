@@ -1,0 +1,20 @@
+BEGIN_GUMROAD_SUMMARY
+Before You Book the Fair is a free 5-page printable worksheet for handmade makers to calculate their exact craft fair booth break-even sales count before paying non-refundable vendor fees.
+END_GUMROAD_SUMMARY
+
+BEGIN_GUMROAD_DESCRIPTION
+A craft fair booth fee is due before you sell a single handmade product.
+
+Before You Book the Fair is a free, independently useful 5-page printable decision worksheet from KindGrid Studio. It helps craft fair vendors, potters, candle makers, and artisans calculate their true event overhead and determine exactly how many items they must sell to break even.
+
+Inside this free download:
+• The 4 hidden expenses of in-person craft markets (booth fee, travel, Square processing, consumable packaging).
+• The 3-minute break-even calculation formula.
+• A worked realistic fictional example showing why a $200 booth fee requires 19 units sold just to cover costs.
+• A print-ready worksheet to calculate your own upcoming event threshold.
+
+Ready for the complete interactive Excel pricing engine with multi-channel fee modeling and automated margin formulas? Explore CraftMargin Studio at:
+https://kindgridstudio.gumroad.com/l/craftmargin-handmade-pricing-studio
+
+KindGrid Studio — practical decision tools for creative businesses.
+END_GUMROAD_DESCRIPTION
