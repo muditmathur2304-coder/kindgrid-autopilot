@@ -124,7 +124,15 @@ def google_file_id(url: str, kind: str = "file") -> str:
 
         raise ValueError(f"Expected a real Google Drive {kind} link; got unsupported URL")
 
-    return m.group(1)
+    file_id = m.group(1)
+
+    # A local-* token is a repository test fixture, NOT a Google Drive/Docs ID.
+    # Never authorize a scheduled release from a synthetic URL, even if a
+    # similarly named file can be read from the local assets directory.
+    require(not file_id.lower().startswith("local-"),
+            "Synthetic local-* Drive/Docs ID is not release evidence")
+
+    return file_id
 
 
 
