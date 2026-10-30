@@ -1,26 +1,15 @@
 KGS-QA-V2 AUDIT REPORT
 ITEM ID: KGS-025
-PRODUCT NAME: Before You Book the Fair FREE | Handmade Maker Booth Break-Even Check
 QA VERSION: KGS-QA-V2
-AUDIT DATE: 2026-10-29T12:00:00Z
-AUDITOR: Antigravity Autonomous QA Engine
-RESULT: PASS
-
-ASSET_OPEN: PASS
-VISUAL: PASS
-CONTENT: PASS
-COPY: PASS
-LINKS: PASS
-LICENSE: PASS
-FACTS: PASS
-PRODUCT_MATCH: PASS
-
+RESULT: BLOCKED
 EVIDENCE:
-- ASSET_OPEN: 5-page PDF opens cleanly with valid %PDF- header and standard fonts.
-- VISUAL: Verified exact 612x792 pt US Letter portrait geometry on all 5 pages. Cover verified at 1000x1500 px.
-- CONTENT: Independently useful 3-minute break-even worksheet with step-by-step arithmetic walkthrough.
-- COPY: Contains BEGIN/END markers, character count exceeds 400 characters, no placeholder text.
-- LINKS: Contains exact public paid destination link 'https://kindgridstudio.gumroad.com/l/craftmargin-handmade-pricing-studio' on page 5 and in description copy.
-- LICENSE: Original KindGrid Studio editorial design.
-- FACTS: Clear disclaimer that example numbers are fictional models.
-- PRODUCT_MATCH: Matches promised free companion decision aid.
+- Source audit 2026-10-30: Free guide uses contribution excluding payment-processing fees while claiming an exact event break-even; the example is illustrative, not a universal answer.
+- Actual delivered PDF, public paid destination, native Google Doc QA, page renders, permissions, and buyer fit not independently verified.
+ASSET_OPEN: BLOCKED — exact delivered free file not independently opened.
+VISUAL: BLOCKED — existing contact sheet is a wireframe mockup.
+CONTENT: BLOCKED — complete fee-inclusive break-even not established.
+COPY: BLOCKED — exact break-even claim not independently supported.
+LINKS: BLOCKED — paid public URL not independently confirmed.
+LICENSE: BLOCKED — final assets not independently rights-checked.
+FACTS: BLOCKED — card fees omitted from illustrative unit contribution.
+PRODUCT_MATCH: BLOCKED — delivered free attachment not matched to listing.
