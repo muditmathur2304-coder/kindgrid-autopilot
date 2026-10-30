@@ -62,6 +62,32 @@ class KGS024CampaignTests(unittest.TestCase):
             self.assertIn(r, evidence.upper())
         self.assertGreaterEqual(evidence.lower().count("https://"), 2)
 
+    def test_unverified_campaign_cannot_generate_release_manifest(self):
+        from scripts import build_kgs024_campaign as builder
+        with self.assertRaisesRegex(RuntimeError, "BLOCKED"):
+            builder.build_manifest()
+
+    def test_item_qa_reports_are_blocked_not_pass(self):
+        for name, item_id in (
+            ("KGS024_QA_Report.txt", "KGS-024"),
+            ("KGS025_QA_Report.txt", "KGS-025"),
+        ):
+            report = (self.campaign_dir / name).read_text(encoding="utf-8")
+            self.assertIn(f"ITEM ID: {item_id}", report)
+            self.assertIn("QA VERSION: KGS-QA-V2", report)
+            self.assertIn("RESULT: BLOCKED", report)
+            self.assertNotIn("RESULT: PASS", report)
+            for label in (
+                "ASSET_OPEN", "VISUAL", "CONTENT", "COPY",
+                "LINKS", "LICENSE", "FACTS", "PRODUCT_MATCH",
+            ):
+                self.assertIn(f"{label}: BLOCKED", report)
+
+    def test_us_keyword_hypotheses_not_misreported_as_verified(self):
+        evidence = (self.campaign_dir / "KGS_PAIR_024_025_Demand_Evidence.txt").read_text(encoding="utf-8")
+        self.assertIn("Trend Data Verified: NO", evidence)
+        self.assertNotIn("Verified active search queries on Pinterest US", evidence)
+
     def test_qa_reports_and_local_store_resolution(self):
         class MockStore(a.GoogleStore):
             def __init__(self):
