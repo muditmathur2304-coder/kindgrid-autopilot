@@ -24,48 +24,64 @@ MIN_NEW_ID = 8
 
 
 def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
-    """Fail closed on tool-first XLSX packages before any Gumroad mutation.
+    """Reject decorative ZIP members that are not visible inside the workbook.
 
-    This checks workbook structure and original embedded instructional artwork.
-    Arithmetic, mobile visuals, buyer demand, and native Sheets checks still
-    require independent item-specific KGS-QA-V2 PASS documentation.
+    A real, readable XLSX must have actual formula cells and an illustration
+    anchored to a worksheet. Independent formula recalculation, instructional
+    usefulness, and 12+ edge-case checks remain mandatory in native QA.
     """
     a.require(15000 <= len(blob) <= 20_000_000,
               f"{pair_id}: primary XLSX size is implausible")
     try:
         with ZipFile(io.BytesIO(blob)) as zipped:
             names = zipped.namelist()
-            sheets = [n for n in names if n.startswith("xl/worksheets/sheet")
-                      and n.endswith(".xml")]
-            a.require("xl/workbook.xml" in names and len(sheets) >= 2,
-                      f"{pair_id}: expected a real multi-sheet Excel workbook")
+            a.require("xl/workbook.xml" in names,
+                      f"{pair_id}: missing Excel workbook structure")
             a.require(not any("vbaProject.bin" in n or
                               n.startswith("xl/externalLinks/") for n in names),
                       f"{pair_id}: macros and external links are not allowed")
-            formula_count = sum(len(re.findall(rb"<(?:[A-Za-z0-9_]+:)?f(?=\\s|>)",
-                                               zipped.read(n))) for n in sheets)
-            a.require(formula_count >= 10,
-                      f"{pair_id}: interactive XLSX requires at least 10 formulas")
-            artwork = [n for n in names if n.startswith("xl/media/") and
-                       n.lower().endswith((".png", ".jpg", ".jpeg"))]
-            a.require(bool(artwork),
+            a.require(any(n.startswith("xl/media/") and
+                          n.lower().endswith((".png", ".jpg", ".jpeg")) for n in names),
                       f"{pair_id}: no actual instructional image embedded in XLSX")
-            from PIL import Image, UnidentifiedImageError
-            suitable = 0
-            for n in artwork:
-                picture = zipped.read(n)
-                try:
-                    with Image.open(io.BytesIO(picture)) as img:
-                        width, height = img.size
-                        img.verify()
-                except (OSError, UnidentifiedImageError):
-                    raise ValueError(f"{pair_id}: unreadable embedded XLSX illustration")
-                if len(picture) >= 3000 and width >= 500 and height >= 250:
-                    suitable += 1
-            a.require(suitable >= 1,
-                      f"{pair_id}: no substantial, readable embedded illustration")
     except BadZipFile:
         raise ValueError(f"{pair_id}: invalid Excel workbook archive") from None
+
+    # Counting arbitrary <f> tags or xl/media/* ZIP entries is not evidence:
+    # neither needs to be referenced by the workbook or visible to buyers.
+    from openpyxl import load_workbook
+    from openpyxl.utils.exceptions import InvalidFileException
+    try:
+        book = load_workbook(io.BytesIO(blob), read_only=False, data_only=False)
+    except (OSError, BadZipFile, KeyError, ValueError, InvalidFileException):
+        raise ValueError(f"{pair_id}: invalid Excel workbook structure") from None
+    try:
+        a.require(len(book.worksheets) >= 2,
+                  f"{pair_id}: expected a real multi-sheet Excel workbook")
+        formula_count = sum(
+            1 for sheet in book.worksheets
+            for row in sheet.iter_rows()
+            for cell in row if cell.data_type == "f")
+        a.require(formula_count >= 10,
+                  f"{pair_id}: interactive XLSX requires at least 10 formulas")
+
+        from PIL import Image, UnidentifiedImageError
+        suitable = 0
+        for sheet in book.worksheets:
+            for picture in sheet._images:
+                try:
+                    raw = picture._data()
+                    with Image.open(io.BytesIO(raw)) as img:
+                        width, height = img.size
+                        img.verify()
+                except (OSError, ValueError, UnidentifiedImageError):
+                    raise ValueError(
+                        f"{pair_id}: unreadable worksheet-embedded illustration") from None
+                if len(raw) >= 3000 and width >= 500 and height >= 250:
+                    suitable += 1
+        a.require(suitable >= 1,
+                  f"{pair_id}: no substantial illustration actually embedded on a worksheet")
+    finally:
+        book.close()
 
 
 def select_ready_pairs(rows: list[dict]) -> list[tuple[dict, dict]]:
