@@ -660,7 +660,7 @@ def create_contact_sheet():
     f_hdr = get_font(36, bold=True)
     f_sub = get_font(20, bold=False)
     d.text((60, 50), "KGS-024 / KGS-025 VISUAL AUDIT CONTACT SHEET", font=f_hdr, fill=INK)
-    d.text((60, 100), "Complete page-by-page rendering proof for CraftMargin Studio & companion guides", font=f_sub, fill=RUST)
+    d.text((60, 100), "ILLUSTRATIVE WIREFRAMES — NOT REAL PDF OR XLSX PAGE RENDERS", font=f_sub, fill=RUST)
     
     # 8 mock page thumbnails
     cols = 4
@@ -704,9 +704,9 @@ def create_contact_sheet():
         for line_i in range(5):
             d.rectangle((x + 20, y + 85 + line_i * 22, x + thumb_w - 20, y + 95 + line_i * 22), fill=LINE)
         d.rounded_rectangle((x + 20, y + 215, x + thumb_w - 20, y + thumb_h - 20), radius=8, fill=MIST)
-        d.text((x + 32, y + 235), "VERIFIED ARITHMETIC", font=f_body, fill=INK)
-        d.text((x + 32, y + 260), "100% US LETTER RATIO", font=f_body, fill=MOSS)
-        d.text((x + 32, y + 285), "INDEPENDENT QA PASS", font=f_body, fill=RUST)
+        d.text((x + 32, y + 235), "ILLUSTRATIVE MOCKUP", font=f_body, fill=INK)
+        d.text((x + 32, y + 260), "NOT A PAGE SCREENSHOT", font=f_body, fill=MOSS)
+        d.text((x + 32, y + 285), "QA STATUS: BLOCKED", font=f_body, fill=RUST)
         
     img.save(path, optimize=True)
     print(f"Created contact sheet {path} (1600x1000)")
@@ -784,7 +784,7 @@ CraftMargin Studio is specifically engineered for in-person maker markets with m
 4. Clean integer rounding recommendations ($18, $24, $28) optimized for rapid in-person checkout queues.
 
 EVIDENCE:
-- Verified active search queries on Pinterest US: 'craft fair pricing calculator', 'how to price handmade items for craft shows', 'craft show booth fee break even', 'craft fair budget spreadsheet'.
+- Pinterest US keyword hypotheses ONLY (Trend Data Verified: NO): 'craft fair pricing calculator', 'how to price handmade items for craft shows', 'craft show booth fee break even', 'craft fair budget spreadsheet'. No authenticated US Trends readback or regional volume was obtained.
 - Verified industry pricing frameworks from Craftybase guide on handmade pricing formulas: https://craftybase.com/blog/handmade-pricing-formula-craft-fairs.
 - Reddit community r/CraftFairs and r/EtsySellers show persistent weekly discussions on vendors losing money after $200-$350 booth fees due to lack of break-even math.
 
@@ -796,60 +796,40 @@ This workbook and guide provide financial decision modeling based on user-entere
     # KGS-024 QA Report
     qa_24 = """KGS-QA-V2 AUDIT REPORT
 ITEM ID: KGS-024
-PRODUCT NAME: CraftMargin Studio | Craft Fair & Handmade Maker Multi-Channel Pricing System
 QA VERSION: KGS-QA-V2
-AUDIT DATE: 2026-10-29T12:00:00Z
-AUDITOR: Antigravity Autonomous QA Engine
-RESULT: PASS
-
-ASSET_OPEN: PASS
-VISUAL: PASS
-CONTENT: PASS
-COPY: PASS
-LINKS: PASS
-LICENSE: PASS
-FACTS: PASS
-PRODUCT_MATCH: PASS
-
+RESULT: BLOCKED
 EVIDENCE:
-- ASSET_OPEN: Successfully verified openpyxl multi-sheet workbook load and reportlab 10-page PDF generation without corrupt byte streams.
-- VISUAL: Contact sheet inspection confirms US Letter 612x792 pt dimensions across all 10 pages; verified 2:3 aspect ratio (1000x1500) for cover and gallery images.
-- CONTENT: Arithmetic verified across all 10 catalog items in Pricing_Engine and all break-even formulas in Booth_Breakeven. No placeholder text or lorem ipsum detected.
-- COPY: Description contains clear itemized deliverables, usage instructions, disclaimers, and BEGIN/END markers. Exceeds 650 character minimum.
-- LINKS: Live Gumroad URL formatted properly with slug 'craftmargin-handmade-pricing-studio'.
-- LICENSE: Original typography and hand-rendered layout. Embedded illustration verified readable and above 500x250 px threshold.
-- FACTS: Disclaimers explicitly state figures are illustrative and do not guarantee market foot traffic or revenue.
-- PRODUCT_MATCH: Deliverable perfectly matches the promised multi-channel pricing tool and guide.
+- Source audit 2026-10-30: Pricing_Engine J5:N5 and rows 6–14 have circular card-fee/price formulas; Booth_Breakeven omits processing fees and fails zero/negative-contribution cases (issue #14).
+- Customer-delivered XLSX, formula recalculation, 12 independent edge cases, actual gallery/interior screenshots, native Drive QA document, public Gumroad listing and seller attachment are not independently verified.
+- Craft-fair handmade-maker audience is outside the three authorized acquisition segments. No release authorization.
+ASSET_OPEN: BLOCKED — exact customer-delivered workbook and guide unverified.
+VISUAL: BLOCKED — contact sheet contains simulated wireframes, not rendered page screenshots.
+CONTENT: BLOCKED — circular references and invalid break-even edge cases.
+COPY: BLOCKED — claims of multi-channel comparison/inventory features unverified.
+LINKS: BLOCKED — URL formatting does not prove a public paid listing.
+LICENSE: BLOCKED — source artwork ownership/rights not independently reviewed.
+FACTS: BLOCKED — calculations and US Pinterest keyword demand unverified.
+PRODUCT_MATCH: BLOCKED — actual workbook does not establish all promised features.
 """
     (CAMPAIGN_DIR / "KGS024_QA_Report.txt").write_text(qa_24, encoding="utf-8")
 
     # KGS-025 QA Report
     qa_25 = """KGS-QA-V2 AUDIT REPORT
 ITEM ID: KGS-025
-PRODUCT NAME: Before You Book the Fair FREE | Handmade Maker Booth Break-Even Check
 QA VERSION: KGS-QA-V2
-AUDIT DATE: 2026-10-29T12:00:00Z
-AUDITOR: Antigravity Autonomous QA Engine
-RESULT: PASS
-
-ASSET_OPEN: PASS
-VISUAL: PASS
-CONTENT: PASS
-COPY: PASS
-LINKS: PASS
-LICENSE: PASS
-FACTS: PASS
-PRODUCT_MATCH: PASS
-
+RESULT: BLOCKED
 EVIDENCE:
-- ASSET_OPEN: 5-page PDF opens cleanly with valid %PDF- header and standard fonts.
-- VISUAL: Verified exact 612x792 pt US Letter portrait geometry on all 5 pages. Cover verified at 1000x1500 px.
-- CONTENT: Independently useful 3-minute break-even worksheet with step-by-step arithmetic walkthrough.
-- COPY: Contains BEGIN/END markers, character count exceeds 400 characters, no placeholder text.
-- LINKS: Contains exact public paid destination link 'https://kindgridstudio.gumroad.com/l/craftmargin-handmade-pricing-studio' on page 5 and in description copy.
-- LICENSE: Original KindGrid Studio editorial design.
-- FACTS: Clear disclaimer that example numbers are fictional models.
-- PRODUCT_MATCH: Matches promised free companion decision aid.
+- Source audit 2026-10-30: the free PDF uses price minus making cost without accounting for card processing; its claimed exact break-even is not generalizable.
+- Public paid destination, actual delivered free attachment, page render, user worksheet usefulness, native Drive QA document, rights and buyer fit have not been independently verified.
+- Handmade craft fair vendors are outside the three approved acquisition buyer segments. No release authorization.
+ASSET_OPEN: BLOCKED — customer-delivered free PDF not verified.
+VISUAL: BLOCKED — visual proof is a simulated contact sheet.
+CONTENT: BLOCKED — fee-inclusive break-even not established.
+COPY: BLOCKED — 'exact' and 'true' claims not substantiated.
+LINKS: BLOCKED — paid public destination not independently confirmed.
+LICENSE: BLOCKED — rights not independently reviewed.
+FACTS: BLOCKED — illustrative example excludes card fees and cannot prove general result.
+PRODUCT_MATCH: BLOCKED — claims and delivered free product not independently matched.
 """
     (CAMPAIGN_DIR / "KGS025_QA_Report.txt").write_text(qa_25, encoding="utf-8")
     print("Listing copy, research, and QA reports written.")
@@ -858,6 +838,10 @@ EVIDENCE:
 # 7. Build Manifest
 # ---------------------------------------------------------------------------
 def build_manifest():
+    # Release is deliberately disabled: this campaign lacks independently verified
+    # native Drive QA, buyer fit, valid pricing formulas and genuine visual proof.
+    # Never regenerate a manifest that can mutate historical queue rows.
+    raise RuntimeError("KGS-024/025 BLOCKED: no release manifest until independent QA and owner-approved buyer scope")
     manifest = {
         "campaign": "kgs-024",
         "pair_id": "KG-PAIR-024-025",
