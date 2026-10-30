@@ -15,7 +15,10 @@ class KGS024CampaignTests(unittest.TestCase):
 
     def test_xlsx_decision_tool_integrity(self):
         blob = (self.campaign_dir / "CraftMargin_Studio_Pricing_System.xlsx").read_bytes()
-        pair.validate_tool_xlsx(blob, "KG-PAIR-024-025")
+        # The historical fixture is deliberately BLOCKED: pricing fees
+        # depend on rounded prices that depend on the same fees.
+        with self.assertRaisesRegex(ValueError, "circular formula dependency"):
+            pair.validate_tool_xlsx(blob, "KG-PAIR-024-025")
 
     def test_paid_pdf_page_count_and_geometry(self):
         blob = (self.campaign_dir / "KGS024_CraftMargin_Field_Guide.pdf").read_bytes()
