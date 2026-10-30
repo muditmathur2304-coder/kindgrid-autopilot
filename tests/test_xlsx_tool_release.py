@@ -12,7 +12,8 @@ from PIL import Image
 from src.paired_release import validate_tool_xlsx
 
 
-def workbook(*, count=12, art=True, sheets=2, external=False, macro=False):
+def workbook(*, count=12, art=True, sheets=2, external=False, macro=False,
+             cycle=False, cross_sheet_cycle=False, cross_sheet_reference=False):
     """Produce an actual XLSX, not hand-written unreferenced ZIP members."""
     from openpyxl import Workbook
     from openpyxl.drawing.image import Image as XLImage
@@ -27,6 +28,13 @@ def workbook(*, count=12, art=True, sheets=2, external=False, macro=False):
         ws.cell(row=row, column=3, value=f"=A{row}+B{row}")
     for index in range(1, sheets):
         book.create_sheet(f"Scenario {index}")
+    if cycle:
+        ws["A1"] = "=C1"  # C1 = A1 + B1
+    if cross_sheet_cycle or cross_sheet_reference:
+        other = book["Scenario 1"]
+        other["A1"] = "=Inputs!C1"
+        if cross_sheet_cycle:
+            ws["A1"] = "='Scenario 1'!A1"
     if art:
         picture = illustration_bytes()
         ws.add_image(XLImage(io.BytesIO(picture)), "E2")
@@ -55,6 +63,17 @@ def illustration_bytes():
 class ToolFirstXlsxTests(unittest.TestCase):
     def test_independent_valid_interactive_illustrated_file(self):
         validate_tool_xlsx(workbook(), "KG-TEST")
+
+    def test_rejects_same_sheet_circular_pricing_dependency(self):
+        with self.assertRaisesRegex(ValueError, "circular formula dependency"):
+            validate_tool_xlsx(workbook(cycle=True), "KG-TEST")
+
+    def test_rejects_cross_sheet_circular_dependency(self):
+        with self.assertRaisesRegex(ValueError, "circular formula dependency"):
+            validate_tool_xlsx(workbook(cross_sheet_cycle=True), "KG-TEST")
+
+    def test_accepts_non_circular_cross_sheet_reference(self):
+        validate_tool_xlsx(workbook(cross_sheet_reference=True), "KG-TEST")
 
     def test_rejects_pdf_instead_of_workbook(self):
         with self.assertRaisesRegex(ValueError, "size is implausible"):
