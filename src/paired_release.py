@@ -23,11 +23,90 @@ EXACT_ROLES = {"PAID", "FREE"}
 MIN_NEW_ID = 8
 
 
+
+def reject_direct_formula_cycles(book, pair_id: str) -> None:
+    """Reject cycles among ordinary A1/range formula references, including cross-sheet.
+
+    This is a structural safety check, NOT independent calculation or complete
+    Excel formula analysis (named ranges and dynamic references need native QA).
+    In particular, merely counting formula cells cannot certify pricing math.
+    """
+    from collections import deque
+    from openpyxl.formula import Tokenizer
+    from openpyxl.utils.cell import range_boundaries
+
+    formula_cells = defaultdict(dict)
+    formulas = {}
+    for sheet in book.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                if cell.data_type == "f":
+                    key = (sheet.title, cell.coordinate)
+                    formulas[key] = cell.value
+                    formula_cells[sheet.title][(cell.row, cell.column)] = key
+
+    dependencies = {key: set() for key in formulas}
+    for key, formula in formulas.items():
+        for token in Tokenizer(formula).items:
+            if token.type != "OPERAND" or token.subtype != "RANGE":
+                continue
+            reference = token.value
+            if "!" in reference:
+                sheet_name, address = reference.rsplit("!", 1)
+                if sheet_name.startswith("'") and sheet_name.endswith("'"):
+                    sheet_name = sheet_name[1:-1].replace("''", "'")
+            else:
+                sheet_name, address = key[0], reference
+            if sheet_name not in formula_cells:
+                continue
+            try:
+                min_col, min_row, max_col, max_row = range_boundaries(
+                    address.replace("$", ""))
+            except (TypeError, ValueError):
+                # Named ranges and structured references need independent QA.
+                continue
+            cells = formula_cells[sheet_name]
+            if (min_col is not None and min_col == max_col and
+                    min_row is not None and min_row == max_row):
+                target = cells.get((min_row, min_col))
+                if target:
+                    dependencies[key].add(target)
+            else:
+                for (row, col), target in cells.items():
+                    if ((min_row is None or row >= min_row) and
+                            (max_row is None or row <= max_row) and
+                            (min_col is None or col >= min_col) and
+                            (max_col is None or col <= max_col)):
+                        dependencies[key].add(target)
+
+    # Topological reduction catches multi-cell and cross-sheet cycles.
+    remaining = {key: len(refs) for key, refs in dependencies.items()}
+    dependents = defaultdict(set)
+    for key, refs in dependencies.items():
+        for ref in refs:
+            dependents[ref].add(key)
+    ready = deque(key for key, count in remaining.items() if count == 0)
+    processed = 0
+    while ready:
+        key = ready.popleft()
+        processed += 1
+        for dependent in dependents[key]:
+            remaining[dependent] -= 1
+            if remaining[dependent] == 0:
+                ready.append(dependent)
+    if processed != len(formulas):
+        key = next(key for key, count in remaining.items() if count > 0)
+        raise ValueError(
+            f"{pair_id}: circular formula dependency near {key[0]}!{key[1]}")
+
+
+
 def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
     """Reject decorative ZIP members that are not visible inside the workbook.
 
     A real, readable XLSX must have actual formula cells and an illustration
-    anchored to a worksheet. Independent formula recalculation, instructional
+    anchored to a worksheet. Reject directly traceable circular formulas.
+    Independent formula recalculation, instructional
     usefulness, and 12+ edge-case checks remain mandatory in native QA.
     """
     a.require(15000 <= len(blob) <= 20_000_000,
@@ -63,6 +142,8 @@ def validate_tool_xlsx(blob: bytes, pair_id: str) -> None:
             for cell in row if cell.data_type == "f")
         a.require(formula_count >= 10,
                   f"{pair_id}: interactive XLSX requires at least 10 formulas")
+
+        reject_direct_formula_cycles(book, pair_id)
 
         from PIL import Image, UnidentifiedImageError
         suitable = 0
