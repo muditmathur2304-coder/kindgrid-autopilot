@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 from zipfile import ZipFile
 
 from src import autopilot as a
@@ -68,6 +69,57 @@ def check_assets() -> None:
             print(f"STAGED_DOC_READ_PASS: {label}")
         except Exception as exc:
             print(f"STAGED_DOC_READ_BLOCKED: {label}: {type(exc).__name__}")
+
+
+def classify_qa_doc_verdict(content: str, item_id: str) -> str:
+    """Conservative *read-only* interpretation; never grants QA approval.
+
+    Require a unique explicit ITEM ID, QA VERSION, and RESULT line. Mentions
+    of PASS in explanations, checklists, or old revision notes do not count.
+    Ambiguous, conflicting, or missing labels are always UNVERIFIED.
+    """
+    labels = {"ITEM ID": set(), "QA VERSION": set(), "RESULT": set()}
+    for raw in content.splitlines():
+        line = raw.strip().replace("**", "").replace(" ", " ")
+        match = re.fullmatch(
+            r"(ITEM ID|QA VERSION|RESULT)\s*[:：\-–]\s*(.*?)\s*",
+            line, flags=re.IGNORECASE,
+        )
+        if match:
+            labels[match.group(1).upper()].add(match.group(2).strip().upper())
+    if labels["ITEM ID"] != {item_id.upper()}:
+        return "UNVERIFIED"
+    if labels["QA VERSION"] != {a.QA_VERSION.upper()}:
+        return "UNVERIFIED"
+    results = labels["RESULT"]
+    valid = {"PASS", "HOLD", "FAIL", "BLOCKED", "REVIEW", "PENDING"}
+    return next(iter(results)) if len(results) == 1 and results <= valid else "UNVERIFIED"
+
+
+def check_staged_qa_verdicts() -> None:
+    """Surface conflicts between live queue labels and the actual QA Docs.
+
+    This only reports evidence. It never edits the Dashboard, authorizes a
+    product, or converts a prior HOLD into PASS.
+    """
+    try:
+        store = a.GoogleStore()
+        rows = store.get_rows("Gumroad Upload Queue")
+        indexed = {str(row.get("Product ID") or "").strip(): row for row in rows}
+        for item_id, doc_label in (("KGS-020", "KGS020_QA_HOLD"),
+                                   ("KGS-021", "KGS021_QA_HOLD")):
+            content = store.get_doc_text(REQUIRED_DOCS[doc_label])
+            verdict = classify_qa_doc_verdict(content, item_id)
+            queue = str(indexed.get(item_id, {}).get("QA Outcome") or "").strip().upper()
+            if verdict == "UNVERIFIED":
+                print(f"STAGED_QA_DOC_UNVERIFIED: {item_id} queue={queue or 'BLANK'}")
+            elif verdict != queue:
+                print(f"STAGED_QA_VERDICT_MISMATCH: {item_id} doc={verdict} queue={queue or 'BLANK'}")
+            else:
+                print(f"STAGED_QA_VERDICT_AGREES: {item_id} doc={verdict} queue={queue}")
+    except Exception as exc:
+        print("STAGED_QA_VERDICT_READ_BLOCKED:", type(exc).__name__)
+
 
 def check_buffer() -> None:
     try:
@@ -293,6 +345,7 @@ def main() -> int:
     print("KINDGRID_STAGED_PREFLIGHT_READ_ONLY: no seller/Buffer/Sheets mutation")
     check_latest_queue_rows()
     check_assets()
+    check_staged_qa_verdicts()
     check_buffer()
     check_seller_slugs()
     check_live_release_candidates()
