@@ -1,7 +1,9 @@
 import importlib.util
+import io
 import json
 import pathlib
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 from datetime import datetime, timezone
 
@@ -153,7 +155,12 @@ class PreflightTests(unittest.TestCase):
              patch.object(a, "GoogleStore", return_value=FakeStore()), \
              patch.object(a, "monitor_existing_pins", return_value=[]), \
              patch.object(a, "process_pins") as process_pins:
-            self.assertEqual(a.main(), 0)
+            # Q-77/Q-78 are synthetic test fixtures, not live Dashboard rows.
+            # Assert the safety message without leaking a false production alert into CI logs.
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(a.main(), 0)
+            self.assertIn("PINTEREST_PAUSED: Unresolved Pin state(s): Q-77", output.getvalue())
             process_pins.assert_not_called()
 
     def test_buffer_success_without_id_never_marked_scheduled(self):
